@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+.env.local
+e2e/screenshots
+supabase/functions/node_modules
+supabase/functions/deno.lock
+*.tsbuildinfo

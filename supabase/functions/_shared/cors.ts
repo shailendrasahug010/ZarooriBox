@@ -1,0 +1,11 @@
+// Browsers call these functions from the app's own origin. Set ALLOWED_ORIGIN to
+// your site (e.g. https://lifebox.app) in production; "*" is fine for local dev.
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+export function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+}
