@@ -19,13 +19,28 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Return from Google sign-in (app.lifebox://auth-callback) -->
+            <!-- app.lifebox:// links: Google sign-in return (auth-callback) and the
+                 home-screen shortcuts (add, scan, shopping, share, act) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="app.lifebox" android:host="auth-callback" />
+                <data android:scheme="app.lifebox" />
             </intent-filter>
+
+            <!-- Share to LifeBox from WhatsApp, Gallery, SMS and other apps -->
+            <intent-filter android:label="@string/share_label">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter android:label="@string/share_label">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>
 
         <provider

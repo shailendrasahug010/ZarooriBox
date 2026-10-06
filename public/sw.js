@@ -1,7 +1,7 @@
 // LifeBox service worker: makes the installed app open instantly and work offline.
 // Pages: network first, falling back to the cached app shell. Built assets (hashed
 // file names): cache first. Supabase and other cross-origin calls are never cached.
-const VERSION = 'lifebox-v1';
+const VERSION = 'lifebox-v2';
 const SHELL = ['/', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -52,13 +52,22 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// Tapping a notification opens (or focuses) LifeBox.
+// Tapping a notification opens (or focuses) LifeBox. The Done / Tomorrow buttons and
+// taps on a single-item reminder go to /app/act, which runs the action in the app.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const data = event.notification.data || {};
+  const target = data.target;
+  let url = data.url || '/app';
+  if (target && target.kind && target.id) {
+    const action = ['done', 'tomorrow'].includes(event.action) ? event.action : 'open';
+    url = `/app/act?kind=${encodeURIComponent(target.kind)}&id=${encodeURIComponent(target.id)}&do=${action}`;
+  }
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       const open = list.find((c) => c.url.includes('/app'));
-      return open ? open.focus() : self.clients.openWindow('/app');
+      if (open) return open.navigate(url).then((c) => (c || open).focus()).catch(() => open.focus());
+      return self.clients.openWindow(url);
     }),
   );
 });

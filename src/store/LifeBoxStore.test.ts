@@ -200,3 +200,49 @@ describe('data isolation', () => {
     expect((await reload()).memories[0].title).toBe('Car insurance');
   });
 });
+
+describe('quick actions', () => {
+  it('snoozes a memory to tomorrow and clears the sent mark', async () => {
+    const m = await store.addMemory(input({ dueDate: TODAY, reminder: { mode: 'offset', offsetDays: 0 } }));
+    const msg = await store.act({ kind: 'memory', id: m.id }, 'tomorrow');
+    expect(msg).toMatch(/tomorrow/i);
+    const r = (await reload()).reminders.find((x) => x.memoryId === m.id)!;
+    expect(r.remindOn).toBe(addDays(TODAY, 1));
+    expect(r.notifiedFor).toBeNull();
+  });
+
+  it('adds a reminder when snoozing an item without one', async () => {
+    const m = await store.addMemory(input({ reminder: { mode: 'none' } }));
+    await store.act({ kind: 'memory', id: m.id }, 'week');
+    expect((await reload()).reminders.find((x) => x.memoryId === m.id)?.remindOn).toBe(addDays(TODAY, 7));
+  });
+
+  it('marks done once, then reports it was already done', async () => {
+    const m = await store.addMemory(input());
+    await store.act({ kind: 'memory', id: m.id }, 'done');
+    expect((await reload()).memories[0].status).toBe('completed');
+    expect(await store.act({ kind: 'memory', id: m.id }, 'done')).toMatch(/already/i);
+  });
+
+  it('settles or snoozes a lending', async () => {
+    const l = await store.addLending({ personName: 'Amit', direction: 'lent', kind: 'money', amount: 500, date: TODAY, followUpDate: TODAY });
+    await store.act({ kind: 'lending', id: l.id }, 'tomorrow');
+    expect((await reload()).lendings[0].followUpDate).toBe(addDays(TODAY, 1));
+    await store.act({ kind: 'lending', id: l.id }, 'done');
+    expect((await reload()).lendings[0].status).not.toBe('open');
+  });
+
+  it('remembers onboarding and language', async () => {
+    await store.finishOnboarding();
+    await store.setLanguage('hi');
+    const s = (await reload()).settings!;
+    expect(s.onboardedAt).toBeTruthy();
+    expect(s.language).toBe('hi');
+    await store.setLanguage('en');
+  });
+
+  it('keeps family sharing to signed-in cloud accounts', async () => {
+    expect(store.canUseFamily).toBe(false);
+    await expect(store.joinFamily('AB12CD34')).rejects.toThrow();
+  });
+});

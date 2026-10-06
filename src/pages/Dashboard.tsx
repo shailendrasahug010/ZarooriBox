@@ -1,4 +1,5 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import { useT, type MessageKey } from '../i18n';
 import { Check } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 import { MemoryRow } from '../components/MemoryRow';
@@ -6,16 +7,25 @@ import { QuickAdd } from '../components/QuickAdd';
 import { useToast } from '../components/Toast';
 import { useUI } from '../components/UIProvider';
 import { EmptyState, SectionCard, StatusDot, cx } from '../components/ui';
-import { formatDate, formatLongToday, greeting, relativeLabel } from '../lib/dates';
+import { formatDate, formatLongToday, now, relativeLabel } from '../lib/dates';
 import { formatMoney, plural } from '../lib/format';
 import { active, comingSoon, dueToday, expiringSoon, overallStatus, recentlyAdded, sortByDue, type LendingView } from '../lib/selectors';
 import { useStore, useViews } from '../store/DataProvider';
 
 const STATUS_COPY = {
-  attention: { emoji: '🔴', text: 'A few things need you today', cls: 'bg-attn-bg text-attn' },
-  soon: { emoji: '🟡', text: 'Nothing urgent, a few things coming up', cls: 'bg-soon-bg text-soon' },
-  ok: { emoji: '🟢', text: 'Everything is fine', cls: 'bg-ok-bg text-ok' },
+  attention: { emoji: '🔴', text: 'dash.status.attention', cls: 'bg-attn-bg text-attn' },
+  soon: { emoji: '🟡', text: 'dash.status.soon', cls: 'bg-soon-bg text-soon' },
+  ok: { emoji: '🟢', text: 'dash.status.ok', cls: 'bg-ok-bg text-ok' },
 } as const;
+
+function greetingKey(): MessageKey {
+  const h = now().getHours();
+  if (h >= 5 && h < 12) return 'greet.morning';
+  if (h >= 12 && h < 17) return 'greet.afternoon';
+  return 'greet.evening';
+}
+
+const HINT_KEY = 'lifebox:v1:swipe-hint-seen';
 
 export function lendingTitle(l: LendingView) {
   const who = l.person?.name ?? 'Someone';
@@ -35,7 +45,8 @@ export default function Dashboard() {
   const store = useStore();
   const toast = useToast();
   const { openLendingForm } = useUI();
-  // Home-screen shortcut "Quick add" opens /app?add=1.
+  const t = useT();
+  // Home-screen shortcuts: "Quick add" opens /app?add=1, "Add by voice" /app?voice=1.
   const [params] = useSearchParams();
 
   const today = dueToday(memories);
@@ -48,29 +59,59 @@ export default function Dashboard() {
   const status = overallStatus(memories, lendings);
   const s = STATUS_COPY[status];
   const firstName = user?.name.split(' ')[0] ?? '';
+  const settings = data.settings ?? store.settings;
+  let showHint = false;
+  try {
+    showHint = (today.length > 0 || soon.length > 0) && !localStorage.getItem(HINT_KEY);
+  } catch {
+    /* no storage */
+  }
+
+  // A brand-new, empty account starts with the short setup.
+  const empty = !data.memories.length && !data.lendings.length && !data.shopping.length;
+  if (empty && !settings.onboardedAt && !user?.isDemo) return <Navigate to="/app/welcome" replace />;
 
   return (
     <div className="space-y-5">
       <header className="animate-fade-up">
         <p className="text-sm font-medium text-muted">{formatLongToday()}</p>
         <h1 className="mt-1 text-[1.75rem] font-extrabold leading-tight tracking-tight sm:text-[2.1rem]">
-          {greeting()}
+          {t(greetingKey())}
           {firstName ? `, ${firstName}` : ''} <span aria-hidden="true">👋</span>
         </h1>
-        <p className="mt-1 text-[1.05rem] text-ink-soft">Here’s what needs your attention</p>
+        <p className="mt-1 text-[1.05rem] text-ink-soft">{t('dash.attentionLine')}</p>
         <p className={cx('mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold', s.cls)} role="status">
           <span aria-hidden="true">{s.emoji}</span>
-          {s.text}
-          {today.length > 0 && <span className="font-medium opacity-80">· {plural(today.length, 'item')} due</span>}
+          {t(s.text)}
+          {today.length > 0 && <span className="font-medium opacity-80">· {t.lang === 'en' ? `${plural(today.length, 'item')} due` : t('dash.itemsDue', { n: today.length })}</span>}
         </p>
       </header>
 
       <div className="animate-fade-up" style={{ animationDelay: '60ms' }}>
-        <QuickAdd autoFocus={params.get('add') === '1'} />
+        <QuickAdd autoFocus={params.get('add') === '1'} autoVoice={params.get('voice') === '1'} />
       </div>
+      {showHint && (
+        <p className="flex items-center justify-between gap-3 rounded-2xl bg-brand-50 px-4 py-2.5 text-sm text-brand-800 lg:hidden">
+          {t('dash.swipeHint')}
+          <button
+            type="button"
+            className="shrink-0 font-semibold"
+            onClick={(e) => {
+              try {
+                localStorage.setItem(HINT_KEY, '1');
+              } catch {
+                /* ignore */
+              }
+              (e.currentTarget.parentElement as HTMLElement).hidden = true;
+            }}
+          >
+            OK
+          </button>
+        </p>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <SectionCard title="Due Today" emoji="🔴" count={today.length} to="/app/upcoming" delay={100}>
+        <SectionCard title={t('dash.dueToday')} emoji="🔴" count={today.length} to="/app/upcoming" delay={100}>
           {today.length ? (
             <ul className="-mx-2">
               {today.map((m) => (
@@ -78,11 +119,11 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <EmptyState emoji="🎉" title="No forgotten things here" body="You’ve got nothing due today." />
+            <EmptyState emoji="🎉" title={t('dash.empty.today.title')} body={t('dash.empty.today.body')} />
           )}
         </SectionCard>
 
-        <SectionCard title="Coming Soon" emoji="🟡" count={comingSoon(memories).length} to="/app/upcoming" delay={140}>
+        <SectionCard title={t('dash.comingSoon')} emoji="🟡" count={comingSoon(memories).length} to="/app/upcoming" delay={140}>
           {soon.length ? (
             <ul className="-mx-2">
               {soon.map((m) => (
@@ -90,11 +131,11 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <EmptyState emoji="🌤️" title="A quiet month ahead" body="Nothing due in the next 30 days." />
+            <EmptyState emoji="🌤️" title={t('dash.empty.soon.title')} body={t('dash.empty.soon.body')} />
           )}
         </SectionCard>
 
-        <SectionCard title="Expiring Soon" emoji="⏰" to="/app/expiry" linkLabel="Radar" delay={180}>
+        <SectionCard title={t('dash.expiringSoon')} emoji="⏰" to="/app/expiry" linkLabel={t('dash.radar')} delay={180}>
           {expiring.length ? (
             <ul className="grid grid-cols-2 gap-2.5">
               {expiring.map((m) => (
@@ -102,18 +143,18 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <EmptyState emoji="🛡️" title="Nothing expiring soon" body="Passports, policies and warranties will show up here." />
+            <EmptyState emoji="🛡️" title={t('dash.empty.expiry.title')} body={t('dash.empty.expiry.body')} />
           )}
         </SectionCard>
 
-        <SectionCard title="Shopping" emoji="🛒" count={shopping.length} to="/app/shopping" linkLabel="Open list" delay={220}>
+        <SectionCard title={t('dash.shopping')} emoji="🛒" count={shopping.length} to="/app/shopping" linkLabel={t('dash.openList')} delay={220}>
           {shopping.length ? (
             <ul className="-mx-1 grid grid-cols-1 gap-0.5 sm:grid-cols-2">
               {shopping.slice(0, 6).map((item) => (
                 <li key={item.id}>
                   <button
                     type="button"
-                    onClick={() => store.toggleShopping(item.id).then(() => toast.success(`Got ${item.name}`, { label: 'Undo', onClick: () => void store.toggleShopping(item.id) }))}
+                    onClick={() => store.toggleShopping(item.id).then(() => toast.success(t('dash.got', { name: item.name }), { label: t('act.undo'), onClick: () => void store.toggleShopping(item.id) }))}
                     className="flex min-h-11 w-full items-center gap-3 rounded-xl px-2 text-left hover:bg-paper"
                     aria-label={`Mark ${item.name} as purchased`}
                   >
@@ -127,11 +168,11 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <EmptyState emoji="🧺" title="Your shopping list is empty." body="Type “Buy milk and bread” above to add items." />
+            <EmptyState emoji="🧺" title={t('dash.empty.shopping.title')} body={t('dash.empty.shopping.body')} />
           )}
         </SectionCard>
 
-        <SectionCard title="People" emoji="👥" count={openLendings.length} to="/app/people" delay={260}>
+        <SectionCard title={t('dash.people')} emoji="👥" count={openLendings.length} to="/app/people" delay={260}>
           {openLendings.length ? (
             <ul className="-mx-1 space-y-0.5">
               {openLendings.slice(0, 4).map((l) => (
@@ -159,11 +200,11 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <EmptyState emoji="🤝" title="Nothing lent or borrowed yet." body="Try “I lent Rahul ₹500 today”." />
+            <EmptyState emoji="🤝" title={t('dash.empty.people.title')} body={t('dash.empty.people.body')} />
           )}
         </SectionCard>
 
-        <SectionCard title="Home" emoji="🏠" count={home.length} to="/app/home-maintenance" delay={300}>
+        <SectionCard title={t('dash.home')} emoji="🏠" count={home.length} to="/app/home-maintenance" delay={300}>
           {home.length ? (
             <ul className="-mx-2">
               {home.map((m) => (
@@ -171,11 +212,11 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <EmptyState emoji="🏡" title="Your home is all set" body="Add things like “AC service every 6 months”." />
+            <EmptyState emoji="🏡" title={t('dash.empty.home.title')} body={t('dash.empty.home.body')} />
           )}
         </SectionCard>
 
-        <SectionCard title="Recently Added" emoji="🕘" className="lg:col-span-2" delay={340}>
+        <SectionCard title={t('dash.recent')} emoji="🕘" className="lg:col-span-2" delay={340}>
           {recent.length ? (
             <ul className="-mx-2 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-4">
               {recent.map((m) => (
@@ -185,11 +226,11 @@ export default function Dashboard() {
           ) : (
             <EmptyState
               emoji="📦"
-              title="Your LifeBox is empty"
-              body="Start with one thing you don’t want to forget."
+              title={t('dash.empty.recent.title')}
+              body={t('dash.empty.recent.body')}
               action={
                 <Link to="/app/add" className="btn btn-primary">
-                  Add your first memory
+                  {t('dash.empty.recent.action')}
                 </Link>
               }
             />

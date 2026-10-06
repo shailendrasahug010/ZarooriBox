@@ -36,7 +36,7 @@ export function searchAll(query: string, memories: MemoryView[], lendings: Lendi
     memories,
     (x) => x.title,
     (x) =>
-      [x.title, x.description, x.notes, x.location, getCategory(x.categoryId).name, x.subcategory, x.person?.name, x.amount, x.status === 'active' ? '' : x.status]
+      [x.title, x.description, x.notes, x.location, getCategory(x.categoryId).name, x.subcategory, x.person?.name, x.amount, x.status === 'active' ? '' : x.status, ...x.attachments.map((f) => f.name)]
         .filter(Boolean)
         .join(' '),
     tokens,

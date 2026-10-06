@@ -1,4 +1,4 @@
-import type { Attachment, CollectionName, CollectionRecord, ID, UserData, UserSettings } from '../types';
+import type { Attachment, CollectionName, CollectionRecord, Family, ID, UserData, UserSettings } from '../types';
 
 /**
  * Storage port. The app talks only to this interface, so localStorage and
@@ -17,6 +17,15 @@ export interface Repository {
   storeFile(file: File, attachment: Attachment): Promise<Attachment>;
   /** Removes everything this user owns (used for "reset demo data" and account deletion). */
   clearAll(): Promise<void>;
+  /** Family sharing. Only cloud accounts have it, because it needs a server. */
+  readonly family?: FamilyService;
+}
+
+export interface FamilyService {
+  load(): Promise<Family | null>;
+  create(name: string, displayName: string): Promise<void>;
+  join(code: string, displayName: string): Promise<void>;
+  leave(): Promise<void>;
 }
 
 export const EMPTY_DATA: UserData = {
@@ -29,6 +38,7 @@ export const EMPTY_DATA: UserData = {
   notifications: [],
   attachments: [],
   settings: null,
+  family: null,
 };
 
 export const COLLECTIONS: CollectionName[] = [

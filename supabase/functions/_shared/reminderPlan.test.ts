@@ -51,6 +51,14 @@ Deno.test('skips delivered, future and stale reminders', () => {
   eq(p.messages.length, 0);
 });
 
+Deno.test('a snoozed reminder is sent again on its new date', () => {
+  // Sent on 10-05 for a bill due 10-08, then snoozed to 10-07.
+  const p = planForUser(base, [rem('1', '2026-10-08', '2026-10-07', '2026-10-05')], [], at815)!;
+  eq(p.messages.length, 1);
+  eq(p.reminderUpdates, [{ id: '1', deliveredFor: '2026-10-07' }]);
+  eq(p.messages[0].targets, [{ kind: 'memory', id: 'm1' }]);
+});
+
 Deno.test('WhatsApp and SMS need a phone number and Pro (unless early access)', () => {
   const s = { ...base, notifications: { ...base.notifications, email: false, whatsapp: true, sms: true } };
   eq(planForUser(s, [rem('1', '2026-10-07')], [], at815, true)!.messages.map((m) => m.channel), ['whatsapp', 'sms']);

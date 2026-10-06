@@ -1,13 +1,15 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Archive, ArchiveRestore, Bell, CalendarDays, Check, MapPin, Paperclip, Pencil, Repeat, RotateCcw, Trash2, User, Wallet } from 'lucide-react';
-import { useViews } from '../store/DataProvider';
+import { AlarmClock, Archive, ArchiveRestore, Bell, CalendarDays, Check, MapPin, Paperclip, Pencil, Repeat, RotateCcw, Trash2, User, Users, Wallet } from 'lucide-react';
+import { useStore, useViews } from '../store/DataProvider';
+import { useT } from '../i18n';
+import { useToast } from './Toast';
 import { getCategory } from '../lib/categories';
 import { describeRepeat, formatDate } from '../lib/dates';
 import { formatMoney } from '../lib/format';
 import { ConfirmDialog, Modal } from './Modal';
 import { useMemoryActions } from './useMemoryActions';
-import { CategoryTile, DuePill } from './ui';
+import { CategoryTile, DuePill, Switch } from './ui';
 
 function Row({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
@@ -26,7 +28,10 @@ function Row({ icon, label, children }: { icon: ReactNode; label: string; childr
 export function MemoryDetail({ id, onClose }: { id: string | null; onClose: () => void }) {
   const { memories } = useViews();
   const navigate = useNavigate();
-  const { complete, setStatus, remove } = useMemoryActions();
+  const { complete, snooze, setStatus, remove } = useMemoryActions();
+  const store = useStore();
+  const toast = useToast();
+  const t = useT();
   const [confirm, setConfirm] = useState(false);
   const m = id ? memories.find((x) => x.id === id) : undefined;
   if (!m) return null;
@@ -66,6 +71,11 @@ export function MemoryDetail({ id, onClose }: { id: string | null; onClose: () =
                 <RotateCcw className="size-4" /> Make active
               </button>
             )}
+            {m.status === 'active' && m.dueDate && (
+              <button type="button" className="btn btn-secondary" onClick={() => close(() => snooze(m.id, 1))}>
+                <AlarmClock className="size-4" /> {t('act.tomorrow')}
+              </button>
+            )}
             <button type="button" className="btn btn-secondary" onClick={() => close(() => navigate(`/app/edit/${m.id}`))}>
               <Pencil className="size-4" /> Edit
             </button>
@@ -94,6 +104,27 @@ export function MemoryDetail({ id, onClose }: { id: string | null; onClose: () =
           {m.lastCompletedAt && <span className="rounded-full bg-ok-bg px-2.5 py-1 text-xs font-semibold text-ok">Last done {formatDate(m.lastCompletedAt.slice(0, 10))}</span>}
         </div>
         {m.description && <p className="mb-2 text-ink-soft">{m.description}</p>}
+        {store.family && (m.userId === store.user.id ? (
+          <div className="mb-2 flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2.5">
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              <Users className="size-4 text-brand-600" aria-hidden="true" /> {t('fam.shareThis')}
+            </span>
+            <Switch
+              checked={!!m.householdId}
+              label={t('fam.shareThis')}
+              onChange={(v) =>
+                store
+                  .setShared(m.id, v)
+                  .then(() => toast.success(v ? t('fam.nowShared') : t('fam.nowPrivate')))
+                  .catch((e: Error) => toast.error(e.message))
+              }
+            />
+          </div>
+        ) : (
+          <p className="mb-2 flex items-center gap-2 rounded-xl bg-paper px-3 py-2.5 text-sm font-semibold">
+            <Users className="size-4 text-brand-600" aria-hidden="true" /> {t('fam.addedBy', { name: store.addedBy(m.userId) ?? '' })}
+          </p>
+        ))}
         <dl className="divide-y divide-line">
           {m.dueDate && (
             <Row icon={<CalendarDays className="size-5" />} label={m.isExpiry ? 'Expires / due' : 'Due'}>

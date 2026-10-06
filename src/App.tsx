@@ -22,6 +22,10 @@ const Search = lazy(() => import('./pages/Search'));
 const Calendar = lazy(() => import('./pages/Calendar'));
 const Lists = lazy(() => import('./pages/Lists'));
 const Settings = lazy(() => import('./pages/Settings'));
+const Welcome = lazy(() => import('./pages/Welcome'));
+const Share = lazy(() => import('./pages/Share'));
+const InAppAct = lazy(() => import('./pages/Act').then((m) => ({ default: m.InAppAct })));
+const PublicAct = lazy(() => import('./pages/Act').then((m) => ({ default: m.PublicAct })));
 
 function Splash() {
   return (
@@ -77,6 +81,8 @@ export default function App() {
             <Route path="/signup" element={<GuestOnly><Signup /></GuestOnly>} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            {/* Done / Snooze links in reminder emails; no sign-in needed. */}
+            <Route path="/act" element={lazyPage(<PublicAct />)} />
             <Route
               path="/app"
               element={
@@ -101,6 +107,9 @@ export default function App() {
               <Route path="calendar" element={lazyPage(<Calendar />)} />
               <Route path="lists" element={lazyPage(<Lists />)} />
               <Route path="settings" element={lazyPage(<Settings />)} />
+              <Route path="welcome" element={lazyPage(<Welcome />)} />
+              <Route path="share" element={lazyPage(<Share />)} />
+              <Route path="act" element={lazyPage(<InAppAct />)} />
               <Route path="*" element={<NotFound />} />
             </Route>
             <Route path="*" element={<div className="p-6"><NotFound /></div>} />

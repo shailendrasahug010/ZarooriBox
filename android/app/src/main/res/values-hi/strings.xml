@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="shortcut_voice_short">बोलकर जोड़ें</string>
+    <string name="shortcut_voice_long">बोलकर रिमाइंडर जोड़ें</string>
+    <string name="shortcut_scan_short">दस्तावेज़ स्कैन</string>
+    <string name="shortcut_scan_long">बिल या दस्तावेज़ स्कैन करें</string>
+    <string name="shortcut_shopping_short">खरीदारी सूची</string>
+    <string name="shortcut_shopping_long">खरीदारी की सूची खोलें</string>
+    <string name="share_label">LifeBox में जोड़ें</string>
+</resources>

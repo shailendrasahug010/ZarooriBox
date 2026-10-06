@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Check, Plus, Trash2 } from 'lucide-react';
+import { Check, Plus, Trash2, Users } from 'lucide-react';
+import { useT } from '../i18n';
 import { useToast } from '../components/Toast';
 import { EmptyState, PageHeader, cx } from '../components/ui';
 import { SHOPPING_LISTS, guessShoppingListName } from '../lib/shopping';
@@ -53,6 +54,7 @@ function Row({ item }: { item: ShoppingItem }) {
 
 export default function Shopping() {
   const data = useData();
+  const t = useT();
   const store = useStore();
   const toast = useToast();
   const location = useLocation();
@@ -99,7 +101,16 @@ export default function Shopping() {
     <div className="mx-auto max-w-2xl">
       <PageHeader
         title="Shopping"
-        subtitle={items.length ? `${items.length - purchased.length} to buy · ${purchased.length} in the cart` : 'Everything you need to pick up.'}
+        subtitle={
+          <>
+            {items.length ? `${items.length - purchased.length} to buy · ${purchased.length} in the cart` : 'Everything you need to pick up.'}
+            {store.family && (
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">
+                <Users className="size-3.5" aria-hidden="true" /> {t('fam.sharedList', { name: store.family.name })}
+              </span>
+            )}
+          </>
+        }
         action={
           purchased.length > 0 && (
             <button

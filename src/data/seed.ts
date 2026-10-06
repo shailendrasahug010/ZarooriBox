@@ -1,6 +1,7 @@
 import type { CategoryId, ID, ISODate, Lending, Memory, Person, RecurringItem, Reminder, RepeatFrequency, ShoppingItem, UserData, UserSettings } from '../types';
 import { addDays, REPEAT_PRESETS, todayISO } from '../lib/dates';
 import { uid } from '../lib/format';
+import { getLanguage } from '../i18n';
 
 export function deviceTimezone(): string {
   try {
@@ -18,6 +19,7 @@ export function defaultSettings(userId: ID): UserSettings {
     plan: 'free',
     phone: null,
     timezone: deviceTimezone(),
+    language: getLanguage(),
     notifications: {
       inApp: true,
       browser: false,

@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { Check, Repeat } from 'lucide-react';
+import { useRef, useState, type PointerEvent } from 'react';
+import { AlarmClock, Check, Repeat, Users } from 'lucide-react';
+import { useT } from '../i18n';
+import { useStore } from '../store/DataProvider';
 import { getCategory } from '../lib/categories';
 import { formatDate } from '../lib/dates';
 import { formatMoney } from '../lib/format';
@@ -57,21 +59,104 @@ export function memoryMeta(m: MemoryView): string {
   return parts.join(' · ');
 }
 
+const SWIPE_AT = 88;
+
+/**
+ * Swipe right to finish, left to be reminded tomorrow (touch and mouse). The buttons
+ * stay for everyone else; swiping is a shortcut, never the only way.
+ */
+function useSwipe(enabled: boolean, onRight: () => void, onLeft: () => void) {
+  const [dx, setDx] = useState(0);
+  const start = useRef<{ x: number; y: number; id: number } | null>(null);
+  const horizontal = useRef(false);
+  const moved = useRef(false);
+
+  const reset = () => {
+    start.current = null;
+    horizontal.current = false;
+    setDx(0);
+  };
+
+  const handlers = enabled
+    ? {
+        onPointerDown: (e: PointerEvent) => {
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
+          start.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+          moved.current = false;
+        },
+        onPointerMove: (e: PointerEvent) => {
+          const s = start.current;
+          if (!s || s.id !== e.pointerId) return;
+          const x = e.clientX - s.x;
+          const y = e.clientY - s.y;
+          if (!horizontal.current) {
+            if (Math.abs(y) > 10 && Math.abs(y) > Math.abs(x)) return reset();
+            if (Math.abs(x) < 10) return;
+            horizontal.current = true;
+            (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+          }
+          moved.current = true;
+          setDx(Math.max(-140, Math.min(140, x)));
+        },
+        onPointerUp: () => {
+          const x = dx;
+          reset();
+          if (x >= SWIPE_AT) onRight();
+          else if (x <= -SWIPE_AT) onLeft();
+        },
+        onPointerCancel: reset,
+        // A drag isn't a tap.
+        onClickCapture: (e: React.MouseEvent) => {
+          if (moved.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            moved.current = false;
+          }
+        },
+      }
+    : {};
+  return { dx, handlers };
+}
+
 export function MemoryRow({ m, showCheck = true, compact = false }: { m: MemoryView; showCheck?: boolean; compact?: boolean }) {
   const { openMemory } = useUI();
-  const { complete } = useMemoryActions();
+  const { complete, snooze } = useMemoryActions();
+  const store = useStore();
+  const t = useT();
   const [leaving, setLeaving] = useState(false);
   const recurring = !!m.recurrence;
+  const canSwipe = showCheck && m.status === 'active';
+  const done = () => {
+    if (!recurring) setLeaving(true);
+    complete(m.id);
+  };
+  const { dx, handlers } = useSwipe(canSwipe, done, () => snooze(m.id, 1));
+  const addedBy = store.addedBy(m.userId);
   return (
-    <li className={cx('flex items-center gap-1 rounded-xl transition-colors hover:bg-paper/80', leaving && 'animate-leave')}>
+    <li className={cx('relative overflow-hidden rounded-xl', leaving && 'animate-leave')}>
+      {dx !== 0 && (
+        <div
+          className={cx('absolute inset-0 flex items-center rounded-xl px-4 text-sm font-bold text-white', dx > 0 ? 'justify-start bg-brand-600' : 'justify-end bg-soon')}
+          aria-hidden="true"
+        >
+          {dx > 0 ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Check className="size-4" strokeWidth={3} /> {t('act.done')}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5">
+              <AlarmClock className="size-4" /> {t('act.tomorrow')}
+            </span>
+          )}
+        </div>
+      )}
+      <div
+        {...handlers}
+        style={dx ? { transform: `translateX(${dx}px)` } : undefined}
+        className={cx('relative flex items-center gap-1 rounded-xl bg-surface transition-colors hover:bg-paper/80', canSwipe && 'touch-pan-y', !dx && 'transition-transform')}
+      >
       {showCheck && m.status === 'active' ? (
-        <CompleteButton
-          label={`Mark “${m.title}” as done`}
-          onComplete={() => {
-            if (!recurring) setLeaving(true);
-            complete(m.id);
-          }}
-        />
+        <CompleteButton label={t('act.markDone', { title: m.title })} onComplete={done} />
       ) : m.status === 'completed' ? (
         <span className="grid size-11 shrink-0 place-items-center" aria-label="Completed">
           <span className="grid size-6 place-items-center rounded-full bg-brand-600">
@@ -89,11 +174,16 @@ export function MemoryRow({ m, showCheck = true, compact = false }: { m: MemoryV
           <span className={cx('block truncate font-semibold', m.status === 'completed' && 'text-muted line-through decoration-ink/30')}>{m.title}</span>
           <span className="flex items-center gap-1.5 truncate text-[0.83rem] text-muted">
             {recurring && <Repeat className="size-3.5 shrink-0" aria-label="Repeats" />}
-            <span className="truncate">{memoryMeta(m)}</span>
+            {m.householdId && <Users className="size-3.5 shrink-0 text-brand-600" aria-label={t('fam.shared')} />}
+            <span className="truncate">
+              {memoryMeta(m)}
+              {addedBy ? ` · ${t('fam.addedBy', { name: addedBy })}` : ''}
+            </span>
           </span>
         </span>
         {m.dueDate && m.status === 'active' && <DuePill date={m.dueDate} urgency={m.urgency} />}
       </button>
+      </div>
     </li>
   );
 }

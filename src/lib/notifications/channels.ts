@@ -1,5 +1,6 @@
 import { getSupabase, isSupabaseConfigured } from '../../data/supabase';
 import type { NotificationChannelId } from '../../types';
+import { t } from '../../i18n';
 import { isNativeApp, nativeChannel } from './native';
 
 export interface NotificationPayload {
@@ -8,6 +9,8 @@ export interface NotificationPayload {
   /** Collapses duplicates on the OS level. */
   tag?: string;
   url?: string;
+  /** Adds Done / Tomorrow buttons (where the browser supports them). */
+  target?: { kind: 'memory' | 'lending'; id: string };
 }
 
 /** server: delivered by LifeBox's servers. needs_cloud: needs a cloud (Supabase) account; the local-only version has no server. */
@@ -45,6 +48,23 @@ export const browserChannel: NotificationChannel = {
   },
   async send(p) {
     if (this.status() !== 'ready') return false;
+    // Through the service worker, notifications can carry buttons and work after the tab closes.
+    try {
+      const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined;
+      if (reg?.active) {
+        await reg.showNotification(p.title, {
+          body: p.body,
+          tag: p.tag,
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-192.png',
+          data: { url: p.url ?? '/app', target: p.target ?? null },
+          ...(p.target ? { actions: [{ action: 'done', title: t('act.done') }, { action: 'tomorrow', title: t('act.tomorrow') }] } : {}),
+        } as NotificationOptions);
+        return true;
+      }
+    } catch {
+      // Fall back to a plain notification below.
+    }
     try {
       const n = new Notification(p.title, { body: p.body, tag: p.tag, icon: '/favicon.svg' });
       n.onclick = () => {

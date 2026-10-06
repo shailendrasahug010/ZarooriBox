@@ -1,6 +1,8 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { navigateTo } from '../appNavigation';
 import { formatMoney } from '../format';
+import { t } from '../../i18n';
 import type { ISODate, UserData, UserSettings } from '../../types';
 import type { ChannelStatus, NotificationChannel } from './channels';
 
@@ -16,7 +18,12 @@ export interface PlannedLocalNotification {
   title: string;
   body: string;
   at: Date;
+  /** What the Done / Tomorrow buttons on the notification act on. */
+  target: { kind: 'memory' | 'lending'; id: string };
 }
+
+/** Buttons shown on every LifeBox reminder notification. */
+export const ACTION_TYPE = 'lifebox-reminder';
 
 /** Stable 31-bit id from a string, so rescheduling replaces rather than duplicates. */
 export function notificationId(key: string): number {
@@ -49,7 +56,7 @@ export function planLocalNotifications(data: UserData, settings: UserSettings, n
     if (!m || m.status !== 'active' || !m.dueDate) continue;
     const at = atLocal(r.remindOn, time);
     if (at <= now || at > horizon) continue;
-    out.push({ id: notificationId(`r:${r.id}:${m.dueDate}`), title: m.title, body: whenText(m.dueDate, r.remindOn), at });
+    out.push({ id: notificationId(`r:${r.id}:${m.dueDate}:${r.remindOn}`), title: m.title, body: whenText(m.dueDate, r.remindOn), at, target: { kind: 'memory', id: m.id } });
   }
   for (const l of data.lendings) {
     if (l.status !== 'open' || !l.followUpDate) continue;
@@ -64,7 +71,7 @@ export function planLocalNotifications(data: UserData, settings: UserSettings, n
         : l.direction === 'lent'
           ? `${who} has your ${l.itemName ?? 'item'}`
           : `Return the ${l.itemName ?? 'item'} to ${who}`;
-    out.push({ id: notificationId(`l:${l.id}:${l.followUpDate}`), title: 'Time to follow up', body: what, at });
+    out.push({ id: notificationId(`l:${l.id}:${l.followUpDate}`), title: 'Time to follow up', body: what, at, target: { kind: 'lending', id: l.id } });
   }
   return out.sort((a, b) => a.at.getTime() - b.at.getTime()).slice(0, MAX_SCHEDULED);
 }
@@ -111,8 +118,51 @@ export async function syncNativeSchedule(data: UserData, settings: UserSettings)
   const plan = planLocalNotifications(data, settings, new Date());
   if (plan.length) {
     await LocalNotifications.schedule({
-      notifications: plan.map((n) => ({ id: n.id, title: n.title, body: n.body, schedule: { at: n.at, allowWhileIdle: true }, extra: { url: '/app' } })),
+      notifications: plan.map((n) => ({
+        id: n.id,
+        title: n.title,
+        body: n.body,
+        schedule: { at: n.at, allowWhileIdle: true },
+        actionTypeId: ACTION_TYPE,
+        extra: { kind: n.target.kind, id: n.target.id },
+      })),
     });
   }
   return plan.length;
+}
+
+let actionsReady = false;
+
+/**
+ * Registers the Done / Tomorrow / Next week buttons and routes taps on them (and on
+ * the notification itself) to /app/act, which runs the action once data has loaded.
+ */
+export async function listenForNotificationActions() {
+  if (!isNativeApp() || actionsReady) return;
+  actionsReady = true;
+  try {
+    await LocalNotifications.registerActionTypes({
+      types: [
+        {
+          id: ACTION_TYPE,
+          actions: [
+            { id: 'done', title: t('act.done') },
+            { id: 'tomorrow', title: t('act.tomorrow') },
+            { id: 'week', title: t('act.week') },
+          ],
+        },
+      ],
+    });
+  } catch {
+    // Older devices without action buttons still get the notification.
+  }
+  await LocalNotifications.addListener('localNotificationActionPerformed', (e) => {
+    const extra = (e.notification.extra ?? {}) as { kind?: string; id?: string };
+    if ((extra.kind !== 'memory' && extra.kind !== 'lending') || !extra.id) {
+      navigateTo('/app');
+      return;
+    }
+    const action = ['done', 'tomorrow', 'week'].includes(e.actionId) ? e.actionId : 'open';
+    navigateTo(`/app/act?kind=${extra.kind}&id=${encodeURIComponent(extra.id)}&do=${action}`);
+  });
 }

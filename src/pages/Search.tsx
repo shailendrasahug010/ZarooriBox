@@ -1,6 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search as SearchIcon, X } from 'lucide-react';
+import { Mic, Search as SearchIcon, Square, X } from 'lucide-react';
+import { useT } from '../i18n';
+import { VOICE_ERROR_TEXT, getVoiceInput, voiceLangFor, type VoiceSession } from '../lib/voice';
+import { useToast } from '../components/Toast';
+import { useStore } from '../store/DataProvider';
 import { MemoryRow } from '../components/MemoryRow';
 import { useUI } from '../components/UIProvider';
 import { EmptyState, PageHeader } from '../components/ui';
@@ -17,10 +21,35 @@ export default function Search() {
   const q = params.get('q') ?? '';
   const results = useMemo(() => searchAll(q, memories, lendings, data.shopping), [q, memories, lendings, data.shopping]);
   const setQ = (v: string) => setParams(v ? { q: v } : {}, { replace: true });
+  const t = useT();
+  const toast = useToast();
+  const store = useStore();
+  const voice = useMemo(() => getVoiceInput(), []);
+  const [listening, setListening] = useState(false);
+  const session = useRef<VoiceSession | null>(null);
+  const listen = async () => {
+    if (listening) return session.current?.stop();
+    setListening(true);
+    session.current = await voice.start(
+      {
+        onPartial: (heard) => setQ(heard),
+        onEnd: (heard) => {
+          setListening(false);
+          if (heard) setQ(heard.replace(/[.?!]$/, ''));
+        },
+        onError: (e) => {
+          setListening(false);
+          toast.error(VOICE_ERROR_TEXT[e]);
+        },
+      },
+      voiceLangFor(store.settings, t.lang),
+    );
+    if (!session.current) setListening(false);
+  };
 
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader title="Search" />
+      <PageHeader title={t('search.title')} />
       <div role="search" className="relative mb-5">
         <label htmlFor="search-input" className="sr-only">
           Search everything in LifeBox
@@ -32,15 +61,29 @@ export default function Search() {
           autoFocus
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search bills, people, warranties…"
-          className="input h-14 rounded-2xl pl-12 pr-12 text-lg shadow-card"
+          placeholder={t('search.placeholder')}
+          className="input h-14 rounded-2xl pl-12 pr-24 text-lg shadow-card"
           autoComplete="off"
         />
-        {q && (
-          <button type="button" className="icon-btn absolute right-1.5 top-1/2 -translate-y-1/2" aria-label="Clear search" onClick={() => setQ('')}>
-            <X className="size-5" />
-          </button>
-        )}
+        <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center">
+          {q && (
+            <button type="button" className="icon-btn" aria-label="Clear search" onClick={() => setQ('')}>
+              <X className="size-5" />
+            </button>
+          )}
+          {voice.isSupported() && (
+            <button
+              type="button"
+              className={listening ? 'icon-btn bg-attn text-white hover:bg-attn' : 'icon-btn'}
+              aria-pressed={listening}
+              aria-label={t('search.voice')}
+              title={t('search.voice')}
+              onClick={listen}
+            >
+              {listening ? <Square className="size-4 fill-current" /> : <Mic className="size-5" />}
+            </button>
+          )}
+        </div>
       </div>
 
       {!q.trim() ? (

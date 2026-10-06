@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the LifeBox icon: Add by voice, Scan a document, Shopping list. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="add_by_voice"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_mic"
+        android:shortcutShortLabel="@string/shortcut_voice_short"
+        android:shortcutLongLabel="@string/shortcut_voice_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="app.lifebox://add?voice=1"
+            android:targetPackage="app.lifebox"
+            android:targetClass="app.lifebox.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="scan_document"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_camera"
+        android:shortcutShortLabel="@string/shortcut_scan_short"
+        android:shortcutLongLabel="@string/shortcut_scan_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="app.lifebox://scan"
+            android:targetPackage="app.lifebox"
+            android:targetClass="app.lifebox.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="shopping_list"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_cart"
+        android:shortcutShortLabel="@string/shortcut_shopping_short"
+        android:shortcutLongLabel="@string/shortcut_shopping_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="app.lifebox://shopping"
+            android:targetPackage="app.lifebox"
+            android:targetClass="app.lifebox.MainActivity" />
+    </shortcut>
+</shortcuts>

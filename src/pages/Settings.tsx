@@ -4,32 +4,15 @@ import { Crown, Download, LogOut, RotateCcw, ShieldCheck, Trash2 } from 'lucide-
 import { useAuth } from '../auth/AuthProvider';
 import { ConfirmDialog } from '../components/Modal';
 import { useToast } from '../components/Toast';
-import { Field, PageHeader, cx } from '../components/ui';
+import { Field, PageHeader, Switch, cx } from '../components/ui';
 import { CHANNELS, deviceChannel, sendServerTest, type ChannelStatus } from '../lib/notifications/channels';
 import { isNativeApp, refreshNativeStatus } from '../lib/notifications/native';
 import { normalizePhone } from '../lib/format';
 import { EARLY_ACCESS, PLANS } from '../lib/plans';
 import { useData, useStore } from '../store/DataProvider';
+import { FamilySettings } from '../components/FamilySettings';
+import { APP_LANGUAGES, VOICE_LANGUAGES, setLanguage, useT } from '../i18n';
 import type { NotificationPrefs } from '../types';
-
-function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={cx(
-        'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition disabled:opacity-40',
-        checked ? 'bg-brand-600' : 'bg-line-strong',
-      )}
-    >
-      <span className={cx('inline-block size-5 rounded-full bg-white shadow transition-transform', checked ? 'translate-x-6' : 'translate-x-1')} />
-    </button>
-  );
-}
 
 function Section({ id, title, children, description }: { id?: string; title: string; description?: string; children: ReactNode }) {
   return (
@@ -61,6 +44,7 @@ export default function Settings() {
   const data = useData();
   const toast = useToast();
   const navigate = useNavigate();
+  const t = useT();
   const settings = data.settings ?? store.settings;
   const [name, setName] = useState(user?.name ?? '');
   const [nameError, setNameError] = useState('');
@@ -170,7 +154,7 @@ export default function Settings() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      <PageHeader title="Settings" subtitle={user?.email} />
+      <PageHeader title={t('set.title')} subtitle={user?.email} />
 
       <Section title="Profile">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -181,6 +165,49 @@ export default function Settings() {
             Save
           </button>
         </div>
+      </Section>
+
+      <Section id="language" title={t('set.language')} description={t('set.languageDesc')}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t('set.appLanguage')} htmlFor="set-lang">
+            <select
+              id="set-lang"
+              className="input"
+              value={t.lang}
+              onChange={(e) => {
+                const lang = e.target.value as typeof t.lang;
+                setLanguage(lang);
+                void store.setLanguage(lang).then(() => toast.success(t('set.saved')));
+              }}
+            >
+              {APP_LANGUAGES.map((l) => (
+                <option key={l.id} value={l.id} lang={l.id}>
+                  {l.label}
+                  {l.label !== l.english ? ` · ${l.english}` : ''}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label={t('set.voiceLanguage')} htmlFor="set-voice-lang">
+            <select
+              id="set-voice-lang"
+              className="input"
+              value={settings.voiceLanguage ?? ''}
+              onChange={(e) => void store.updateSettings({ voiceLanguage: e.target.value || null }).then(() => toast.success(t('set.saved')))}
+            >
+              <option value="">{t('set.voiceAuto')}</option>
+              {VOICE_LANGUAGES.map((v) => (
+                <option key={v.tag} value={v.tag}>
+                  {v.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </Section>
+
+      <Section id="family" title={t('fam.title')} description={t('fam.description')}>
+        <FamilySettings />
       </Section>
 
       <Section id="notifications" title="Notifications" description="How LifeBox reaches you when something is due.">

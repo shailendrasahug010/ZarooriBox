@@ -73,6 +73,8 @@ export interface Memory {
   completedAt?: Timestamp | null;
   /** For recurring items: the last time an occurrence was completed. */
   lastCompletedAt?: Timestamp | null;
+  /** Set when the memory is shared with the owner's family. */
+  householdId?: ID | null;
 }
 
 export interface Reminder {
@@ -135,6 +137,8 @@ export interface ShoppingItem {
   purchased: boolean;
   createdAt: Timestamp;
   purchasedAt?: Timestamp | null;
+  /** Set when the item is on the family's shared list. */
+  householdId?: ID | null;
 }
 
 export type NotificationChannelId = 'in_app' | 'browser' | 'email' | 'whatsapp' | 'sms';
@@ -186,7 +190,29 @@ export interface UserSettings {
   phone?: string | null;
   /** IANA timezone, so outside-the-app reminders arrive at the person's chosen local time. */
   timezone?: string;
+  /** When the person finished (or skipped) the first-run setup. */
+  onboardedAt?: Timestamp | null;
+  /** Language of the app screens. */
+  language?: AppLanguage;
+  /** BCP 47 tag for voice input, e.g. hi-IN. Empty means "match the device". */
+  voiceLanguage?: string | null;
   updatedAt: Timestamp;
+}
+
+export type AppLanguage = 'en' | 'hi';
+
+export interface FamilyMember {
+  userId: ID;
+  displayName: string;
+  role: 'owner' | 'member';
+}
+
+/** A family (household) whose members share chosen bills and the shopping list. */
+export interface Family {
+  id: ID;
+  name: string;
+  inviteCode: string;
+  members: FamilyMember[];
 }
 
 /** Everything that belongs to one user. */
@@ -200,8 +226,10 @@ export interface UserData {
   notifications: AppNotification[];
   attachments: Attachment[];
   settings: UserSettings | null;
+  /** Only in cloud (Supabase) mode. */
+  family?: Family | null;
 }
 
-export type CollectionName = Exclude<keyof UserData, 'settings'>;
+export type CollectionName = Exclude<keyof UserData, 'settings' | 'family'>;
 
 export type CollectionRecord<K extends CollectionName> = UserData[K][number];

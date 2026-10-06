@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 import type { CategoryId } from '../types';
 import { getCategory } from '../lib/categories';
@@ -125,7 +125,7 @@ export function SectionCard({
   className?: string;
   delay?: number;
 }) {
-  const headingId = `sec-${title.toLowerCase().replace(/\W+/g, '-')}`;
+  const headingId = `sec-${useId().replace(/:/g, '')}`;
   return (
     <section aria-labelledby={headingId} className={cx('card min-w-0 animate-fade-up p-4 sm:p-5', className)} style={{ animationDelay: `${delay}ms` }}>
       <header className="mb-2 flex items-center justify-between gap-2">
@@ -188,5 +188,24 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
       </div>
       {action}
     </header>
+  );
+}
+
+export function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cx(
+        'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition disabled:opacity-40',
+        checked ? 'bg-brand-600' : 'bg-line-strong',
+      )}
+    >
+      <span className={cx('inline-block size-5 rounded-full bg-white shadow transition-transform', checked ? 'translate-x-6' : 'translate-x-1')} />
+    </button>
   );
 }

@@ -1,8 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CornerDownLeft, Mic, SlidersHorizontal, Sparkles, Square } from 'lucide-react';
+import { ArrowRight, Camera, CornerDownLeft, Mic, SlidersHorizontal, Sparkles, Square } from 'lucide-react';
+import { useT, type MessageKey } from '../i18n';
 import { aiQuickAddEnabled, parseQuickAdd, quickAddParser, type ParsedQuickAdd } from '../lib/parser';
-import { VOICE_ERROR_TEXT, getVoiceInput, type VoiceSession } from '../lib/voice';
+import { VOICE_ERROR_TEXT, getVoiceInput, voiceLangFor, type VoiceSession } from '../lib/voice';
 import { getCategory } from '../lib/categories';
 import { describeRepeat, formatDate, relativeLabel, todayISO } from '../lib/dates';
 import { formatMoney } from '../lib/format';
@@ -11,15 +12,7 @@ import { useToast } from './Toast';
 import { useUI } from './UIProvider';
 import { cx } from './ui';
 
-const EXAMPLES = [
-  'Bike insurance expires on 17 November',
-  'I lent Rahul ₹2000 today',
-  'RO filter change every 6 months',
-  'Buy milk, bread and eggs',
-  'Mom’s birthday on 14 March',
-  'Netflix renews on the 22nd',
-  'Borrowed a ladder from Amit',
-];
+const EXAMPLES: MessageKey[] = ['qa.ex.1', 'qa.ex.2', 'qa.ex.3', 'qa.ex.4', 'qa.ex.5', 'qa.ex.6', 'qa.ex.7'];
 
 function reminderText(p: ParsedQuickAdd) {
   if (p.reminderDaysBefore == null || !p.dueDate) return null;
@@ -77,12 +70,27 @@ function Preview({ p, ai }: { p: ParsedQuickAdd; ai?: boolean }) {
   );
 }
 
-export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'hero' | 'compact'; autoFocus?: boolean }) {
+export interface QuickAddProps {
+  variant?: 'hero' | 'compact';
+  autoFocus?: boolean;
+  /** Start listening right away (the "Add by voice" home-screen shortcut). */
+  autoVoice?: boolean;
+  /** Text to start with, e.g. shared from another app. */
+  initialText?: string;
+  /** Called after something was saved. */
+  onAdded?: () => void;
+  /** Shows the camera button for scanning a document. */
+  showScan?: boolean;
+}
+
+export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = false, initialText = '', onAdded, showScan = true }: QuickAddProps) {
   const store = useStore();
+  const t = useT();
   const toast = useToast();
   const navigate = useNavigate();
   const { openLendingForm } = useUI();
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initialText);
+  const scanRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState(false);
   const [exampleIdx, setExampleIdx] = useState(0);
@@ -130,7 +138,8 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
     }
     const before = text;
     setListening(true);
-    const session = await voice.start({
+    const session = await voice.start(
+      {
       onPartial: (heard) => setText(heard),
       onEnd: (heard) => {
         voiceRef.current = null;
@@ -144,7 +153,9 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
         setText(before);
         toast.error(VOICE_ERROR_TEXT[err]);
       },
-    });
+      },
+      voiceLangFor(store.settings, t.lang),
+    );
     if (session) voiceRef.current = session;
     else setListening(false);
   };
@@ -158,7 +169,7 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
       return;
     }
     if (value.length > 300) {
-      toast.error('That’s a bit long for Quick Add. Try “Add details” instead.');
+      toast.error(t('qa.tooLong'));
       return;
     }
     setBusy(true);
@@ -175,9 +186,10 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
           : res.kind === 'lending' && res.id
             ? { label: 'Undo', onClick: () => void store.deleteLending(res.id!) }
             : undefined;
-      toast.success(res.message, undo);
+      toast.success(res.message, undo ? { ...undo, label: t('act.undo') } : undefined);
+      onAdded?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not add that.');
+      toast.error(err instanceof Error ? err.message : t('qa.failed'));
     } finally {
       setBusy(false);
       inputRef.current?.focus();
@@ -206,6 +218,21 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
     navigate('/app/add', { state: { parsed: preview } });
   };
 
+  // "Add by voice" shortcut: start listening as soon as the box appears. Browsers may
+  // require a tap first; then the person sees a hint and taps the mic.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!autoVoice || autoStarted.current || !voice.isSupported()) return;
+    autoStarted.current = true;
+    void toggleVoice();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoVoice]);
+
+  const onScanFile = (file: File | undefined) => {
+    if (!file) return;
+    navigate('/app/add', { state: { scanFile: file } });
+  };
+
   const hero = variant === 'hero';
   return (
     <form onSubmit={submit} className={cx('card relative p-3 sm:p-4', flash && 'ring-2 ring-brand-300 transition-shadow')} aria-label="Quick add">
@@ -214,7 +241,7 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
           <Sparkles className={cx('size-5 transition-transform', flash && 'animate-pop')} />
         </span>
         <label htmlFor="quick-add-input" className="sr-only">
-          Quick add: type anything you want to remember
+          {t('qa.label')}
         </label>
         <input
           id="quick-add-input"
@@ -226,7 +253,7 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
           enterKeyHint="done"
           aria-describedby={hintId}
           maxLength={300}
-          placeholder={listening ? 'Listening… say what you want to remember' : `Try “${EXAMPLES[exampleIdx]}”`}
+          placeholder={listening ? t('qa.listening') : t('qa.try', { example: t(EXAMPLES[exampleIdx]) })}
           className={cx(
             'min-w-0 flex-1 bg-transparent font-medium text-ink outline-none placeholder:font-normal placeholder:text-muted/80',
             hero ? 'min-h-12 text-[1.05rem] sm:text-lg' : 'min-h-11 text-base',
@@ -237,8 +264,8 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
             type="button"
             onClick={toggleVoice}
             aria-pressed={listening}
-            aria-label={listening ? 'Stop listening' : 'Add by voice'}
-            title={listening ? 'Stop listening' : 'Add by voice'}
+            aria-label={listening ? t('qa.stopVoice') : t('qa.voice')}
+            title={listening ? t('qa.stopVoice') : t('qa.voice')}
             className={cx(
               'relative grid shrink-0 place-items-center rounded-xl transition',
               hero ? 'size-11' : 'size-10',
@@ -249,8 +276,34 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
             {listening ? <Square className="relative size-4 fill-current" /> : <Mic className="size-5" />}
           </button>
         )}
-        <button type="submit" className={cx('btn btn-primary shrink-0', !hero && 'btn-sm')} disabled={busy} aria-label="Add">
-          <span className="hidden sm:inline">Add</span>
+        {showScan && !text && !listening && (
+          <>
+            <button
+              type="button"
+              onClick={() => scanRef.current?.click()}
+              aria-label={t('qa.scan')}
+              title={t('qa.scan')}
+              className={cx('grid shrink-0 place-items-center rounded-xl bg-paper text-ink-soft transition hover:bg-brand-50 hover:text-brand-700', hero ? 'size-11' : 'size-10')}
+            >
+              <Camera className="size-5" />
+            </button>
+            <input
+              ref={scanRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden="true"
+              onChange={(e) => {
+                onScanFile(e.target.files?.[0]);
+                e.target.value = '';
+              }}
+            />
+          </>
+        )}
+        <button type="submit" className={cx('btn btn-primary shrink-0', !hero && 'btn-sm')} disabled={busy} aria-label={t('qa.add')}>
+          <span className="hidden sm:inline">{t('qa.add')}</span>
           <ArrowRight className="size-4 sm:hidden" />
           <CornerDownLeft className="hidden size-4 opacity-70 sm:block" />
         </button>
@@ -262,10 +315,10 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
         <>
           <Preview p={preview} ai={aiMatches} />
           <div className="mt-2 flex items-center justify-between gap-2 px-1">
-            <span className="text-xs text-muted">{listening ? 'Listening… tap ■ when you’re done' : 'Press Enter or tap Add to save'}</span>
+            <span className="text-xs text-muted">{listening ? t('qa.listeningHint') : t('qa.enterToSave')}</span>
             <button type="button" onClick={openDetails} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">
               <SlidersHorizontal className="size-4" aria-hidden="true" />
-              Add details
+              {t('qa.details')}
             </button>
           </div>
         </>

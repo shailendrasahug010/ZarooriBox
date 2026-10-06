@@ -72,6 +72,8 @@ Rules for memories:
 - isExpiry: true for things that expire or renew (insurance, documents, warranties, subscriptions, PUC).
 - amount only when a sum of money is stated; "2k" is 2000, "1 lakh" is 100000.
 
+The sentence may be in English, Hindi, Hinglish or another Indian language, in any script (for example "कल बिजली का बिल भरना है" or "Rahul ko 500 diye"). Understand it whatever the language. Write title and shopping item names in the language the person used (keep Devanagari as Devanagari); everything else follows the rules above. In Hindi, "कल" in a plan means tomorrow.
+
 Fields that do not apply to the chosen kind are null (shoppingItems is an empty array).`;
 
 export interface ParseRequest {

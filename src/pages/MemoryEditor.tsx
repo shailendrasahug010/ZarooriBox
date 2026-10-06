@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Camera, ImagePlus, Sparkles } from 'lucide-react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { CategoryId } from '../types';
 import { MemoryForm } from '../components/MemoryForm';
@@ -12,6 +13,9 @@ import type { MemoryView } from '../lib/selectors';
 import { useStore, useViews } from '../store/DataProvider';
 import { ValidationError } from '../store/LifeBoxStore';
 import type { FieldErrors, MemoryInput } from '../store/memoryInput';
+import { isScannable, scanDocument, type ScanOutcome } from '../lib/scan';
+import { can } from '../lib/plans';
+import { useT } from '../i18n';
 
 function blank(categoryId: CategoryId = 'personal', defaultReminder = 1): MemoryInput {
   return {
@@ -53,7 +57,37 @@ function fromView(m: MemoryView): MemoryInput {
     personName: m.person?.name ?? '',
     location: m.location ?? '',
     notes: m.notes ?? '',
+    shared: !!m.householdId,
   };
+}
+
+/** Picks or takes a photo of a document to scan. */
+function ScanPicker({ onFile }: { onFile: (f: File) => void }) {
+  const t = useT();
+  const pick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (f) onFile(f);
+  };
+  return (
+    <div className="card mb-6 p-5 text-center">
+      <span className="mx-auto mb-3 grid size-12 place-items-center rounded-2xl bg-brand-50 text-brand-700" aria-hidden="true">
+        <Camera className="size-6" />
+      </span>
+      <h2 className="font-bold">{t('scan.title')}</h2>
+      <p className="mx-auto mt-1 max-w-sm text-sm text-muted">{t('scan.help')}</p>
+      <div className="mt-4 flex flex-wrap justify-center gap-2">
+        <label className="btn btn-primary cursor-pointer focus-within:shadow-focus">
+          <Camera className="size-4" aria-hidden="true" /> {t('scan.take')}
+          <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={pick} />
+        </label>
+        <label className="btn btn-secondary cursor-pointer focus-within:shadow-focus">
+          <ImagePlus className="size-4" aria-hidden="true" /> {t('scan.pick')}
+          <input type="file" accept="image/*" className="sr-only" onChange={pick} />
+        </label>
+      </div>
+    </div>
+  );
 }
 
 function useSave() {
@@ -84,19 +118,55 @@ export function AddMemory() {
   const navigate = useNavigate();
   const toast = useToast();
   const location = useLocation();
+  const t = useT();
   const [params] = useSearchParams();
-  const parsed = (location.state as { parsed?: ParsedQuickAdd } | null)?.parsed;
+  const state = location.state as { parsed?: ParsedQuickAdd; scanFile?: File } | null;
+  const parsed = state?.parsed;
   const catParam = params.get('category') as CategoryId | null;
   const defaultReminder = store.settings.defaultReminderDays;
-  const initial = parsed
+  const base = parsed
     ? fromParsed(parsed, defaultReminder)
     : blank(catParam && MEMORY_CATEGORIES.some((c) => c.id === catParam) ? catParam : 'personal', defaultReminder);
   const { errors, saving, run } = useSave();
 
+  // Document scanning: a photo from the camera button, the Add page or Share to LifeBox.
+  const [scanFile, setScanFile] = useState<File | null>(state?.scanFile ?? null);
+  const [scan, setScan] = useState<{ outcome: ScanOutcome; input: MemoryInput; files: File[]; n: number } | null>(null);
+  const scanning = !!scanFile && !scan;
+  const scanned = useRef<File | null>(null);
+  useEffect(() => {
+    if (!scanFile || scanned.current === scanFile) return;
+    scanned.current = scanFile;
+    if (!isScannable(scanFile)) {
+      toast.error(t('scan.notImage'));
+      setScanFile(null);
+      return;
+    }
+    void scanDocument(scanFile, defaultReminder).then((r) => {
+      const files = can(store.settings.plan, 'attachments') ? [scanFile] : [];
+      setScan((prev) => ({ outcome: r.outcome, input: { ...blank('documents', defaultReminder), ...r.fields }, files, n: (prev?.n ?? 0) + 1 }));
+    });
+  }, [scanFile, defaultReminder, store, toast, t]);
+
+  const initial = scan?.input ?? base;
+  const family = store.family;
+
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader title="Add a memory" subtitle="Type it in one line, or fill in the details below." />
-      {!parsed && (
+      {params.get('scan') === '1' && !scanFile && <ScanPicker onFile={(f) => { setScan(null); setScanFile(f); }} />}
+      {scanning && (
+        <div className="card mb-6 flex items-center gap-3 p-5" role="status" aria-busy="true">
+          <Sparkles className="size-5 animate-pulse text-brand-600" aria-hidden="true" />
+          <span className="font-semibold">{t('scan.reading')}</span>
+        </div>
+      )}
+      {scan && (
+        <p className={`mb-4 rounded-2xl p-3.5 text-sm font-medium ${scan.outcome === 'found' ? 'bg-brand-50 text-brand-800' : 'bg-soon-bg text-soon'}`} role="status">
+          {scan.outcome === 'found' ? t('scan.found') : scan.outcome === 'no_ai' ? t(scan.files.length ? 'scan.noAi' : 'scan.noAiBare') : t('scan.notFound')}
+        </p>
+      )}
+      {!parsed && !scanFile && params.get('scan') !== '1' && (
         <div className="mb-6">
           <QuickAdd variant="compact" />
           <div className="my-6 flex items-center gap-3 text-sm text-muted" aria-hidden="true">
@@ -105,9 +175,12 @@ export function AddMemory() {
         </div>
       )}
       <div className="card p-4 sm:p-6">
+        {!scanning && (
         <MemoryForm
-          key={location.key}
+          key={`${location.key}-${scan?.n ?? 0}`}
           initial={initial}
+          initialFiles={scan?.files}
+          shareWith={family?.name}
           errors={errors}
           saving={saving}
           submitLabel="Save memory"
@@ -120,6 +193,7 @@ export function AddMemory() {
             if (ok) navigate('/app');
           }}
         />
+        )}
       </div>
     </div>
   );
@@ -147,6 +221,7 @@ export function EditMemory() {
         <MemoryForm
           initial={initial}
           existingAttachments={m.attachments}
+          shareWith={store.family && m.userId === store.user.id ? store.family.name : undefined}
           errors={errors}
           saving={saving}
           submitLabel="Save changes"

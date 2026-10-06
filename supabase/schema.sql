@@ -248,3 +248,162 @@ create index if not exists attachments_user on public.attachments (user_id);
 create index if not exists attachments_memory on public.attachments (memory_id);
 create index if not exists memories_person on public.memories (person_id);
 create index if not exists memories_category on public.memories (category_id);
+
+-- ---------- Onboarding, language and snooze-friendly delivery ----------
+alter table public.user_settings add column if not exists onboarded_at timestamptz;
+alter table public.user_settings add column if not exists language text not null default 'en' check (language in ('en','hi'));
+alter table public.user_settings add column if not exists voice_language text check (char_length(voice_language) <= 12);
+
+-- ---------- Family sharing ----------
+-- A family (household) shares the bills and the shopping list its members choose
+-- to share. Everything else (people, lendings, notifications, settings) stays private.
+create table if not exists public.households (
+  id uuid primary key default gen_random_uuid(),
+  name text not null check (char_length(name) between 1 and 60),
+  invite_code text not null unique check (invite_code ~ '^[A-Z0-9]{8}$'),
+  created_by uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+create table if not exists public.household_members (
+  household_id uuid not null references public.households(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  display_name text not null default '' check (char_length(display_name) <= 60),
+  role text not null default 'member' check (role in ('owner','member')),
+  active boolean not null default true,
+  joined_at timestamptz not null default now(),
+  primary key (household_id, user_id)
+);
+create unique index if not exists household_members_one_active on public.household_members (user_id) where active;
+create index if not exists household_members_user on public.household_members (user_id);
+
+alter table public.memories add column if not exists household_id uuid references public.households(id) on delete set null;
+alter table public.shopping_items add column if not exists household_id uuid references public.households(id) on delete set null;
+create index if not exists memories_household on public.memories (household_id) where household_id is not null;
+create index if not exists shopping_household on public.shopping_items (household_id) where household_id is not null;
+-- Outside-the-app deliveries to family members of a shared item: {"<user id>": "<remind_on>"}.
+alter table public.reminders add column if not exists delivered_to jsonb not null default '{}';
+
+-- The family the signed-in person belongs to (null if none). Security definer so
+-- policies can call it without recursing into household_members' own policy.
+create or replace function public.my_household() returns uuid language sql stable security definer set search_path = '' as $$
+  select household_id from public.household_members where user_id = (select auth.uid()) and active limit 1
+$$;
+revoke all on function public.my_household() from public, anon;
+grant execute on function public.my_household() to authenticated, service_role;
+
+alter table public.households enable row level security;
+alter table public.households force row level security;
+alter table public.household_members enable row level security;
+alter table public.household_members force row level security;
+drop policy if exists "my family" on public.households;
+create policy "my family" on public.households for select to authenticated using (id = (select public.my_household()));
+drop policy if exists "my family members" on public.household_members;
+create policy "my family members" on public.household_members for select to authenticated using (household_id = (select public.my_household()));
+
+-- Shared rows: visible and editable by everyone in the family. Only the owner can
+-- stop sharing (the check fails for anyone else once household_id is null).
+alter policy "owner only" on public.memories
+  using (user_id = (select auth.uid()) or (household_id is not null and household_id = (select public.my_household())))
+  with check ((user_id = (select auth.uid()) or household_id = (select public.my_household()))
+              and (household_id is null or household_id = (select public.my_household())));
+alter policy "owner only" on public.shopping_items
+  using (user_id = (select auth.uid()) or (household_id is not null and household_id = (select public.my_household())))
+  with check ((user_id = (select auth.uid()) or household_id = (select public.my_household()))
+              and (household_id is null or household_id = (select public.my_household())));
+
+-- Reminders, repeats and attachments follow the memory they belong to.
+create or replace function public.can_use_memory(p_memory_id text) returns boolean language sql stable security invoker set search_path = '' as $$
+  select exists (select 1 from public.memories m where m.id = p_memory_id)
+$$;
+alter policy "owner only" on public.reminders
+  using (user_id = (select auth.uid()) or public.can_use_memory(memory_id))
+  with check (user_id = (select auth.uid()) or public.can_use_memory(memory_id));
+alter policy "owner only" on public.recurring_items
+  using (user_id = (select auth.uid()) or public.can_use_memory(memory_id))
+  with check (user_id = (select auth.uid()) or public.can_use_memory(memory_id));
+alter policy "owner only" on public.attachments
+  using (user_id = (select auth.uid()) or public.can_use_memory(memory_id))
+  with check (user_id = (select auth.uid()) or public.can_use_memory(memory_id));
+
+-- A row's owner never changes, whoever edits it.
+create or replace function public.keep_owner() returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  new.user_id := old.user_id;
+  return new;
+end $$;
+do $$
+declare t text;
+begin
+  foreach t in array array['memories','shopping_items','reminders','recurring_items','attachments']
+  loop
+    execute format('create or replace trigger keep_owner before update on public.%I for each row execute function public.keep_owner()', t);
+  end loop;
+end $$;
+
+-- Delivery bookkeeping (delivered_for, delivered_to) is written only by the server.
+create or replace function public.protect_delivery() returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    new.delivered_for := case when tg_op = 'INSERT' then null else old.delivered_for end;
+    if tg_table_name = 'reminders' then
+      new.delivered_to := case when tg_op = 'INSERT' then '{}'::jsonb else old.delivered_to end;
+    end if;
+  end if;
+  return new;
+end $$;
+
+-- Family membership changes only through these functions.
+create or replace function public.create_household(p_name text, p_display_name text) returns public.households
+language plpgsql security definer set search_path = '' as $$
+declare h public.households;
+begin
+  if (select auth.uid()) is null then raise exception 'not signed in'; end if;
+  if public.my_household() is not null then raise exception 'You are already in a family. Leave it first.'; end if;
+  insert into public.households (name, invite_code, created_by)
+    values (left(coalesce(nullif(trim(p_name), ''), 'Our family'), 60), upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)), (select auth.uid()))
+    returning * into h;
+  insert into public.household_members (household_id, user_id, display_name, role)
+    values (h.id, (select auth.uid()), left(coalesce(p_display_name, ''), 60), 'owner');
+  update public.shopping_items set household_id = h.id where user_id = (select auth.uid()) and not purchased and household_id is null;
+  return h;
+end $$;
+
+create or replace function public.join_household(p_code text, p_display_name text) returns public.households
+language plpgsql security definer set search_path = '' as $$
+declare h public.households;
+begin
+  if (select auth.uid()) is null then raise exception 'not signed in'; end if;
+  select * into h from public.households where invite_code = upper(trim(p_code));
+  if h.id is null then raise exception 'That invite code didn’t match a family. Check it and try again.'; end if;
+  if public.my_household() is not null and public.my_household() <> h.id then raise exception 'You are already in a family. Leave it first.'; end if;
+  insert into public.household_members (household_id, user_id, display_name, role)
+    values (h.id, (select auth.uid()), left(coalesce(p_display_name, ''), 60), 'member')
+    on conflict (household_id, user_id) do update set active = true, display_name = excluded.display_name, joined_at = now();
+  update public.shopping_items set household_id = h.id where user_id = (select auth.uid()) and not purchased and household_id is null;
+  return h;
+end $$;
+
+-- Leaving keeps your own items; anything you had shared becomes private again.
+create or replace function public.leave_household() returns void
+language plpgsql security definer set search_path = '' as $$
+declare v uuid := public.my_household();
+begin
+  if v is null then return; end if;
+  update public.household_members set active = false where household_id = v and user_id = (select auth.uid());
+  update public.memories set household_id = null where household_id = v and user_id = (select auth.uid());
+  update public.shopping_items set household_id = null where household_id = v and user_id = (select auth.uid());
+end $$;
+
+revoke all on function public.create_household(text, text) from public, anon;
+revoke all on function public.join_household(text, text) from public, anon;
+revoke all on function public.leave_household() from public, anon;
+grant execute on function public.create_household(text, text) to authenticated;
+grant execute on function public.join_household(text, text) to authenticated;
+grant execute on function public.leave_household() to authenticated;
+
+-- Family members can open attachments of shared memories.
+alter policy "own attachment files" on storage.objects
+  using (bucket_id = 'attachments' and (
+    (storage.foldername(name))[1] = (select auth.uid())::text
+    or exists (select 1 from public.attachments a where a.storage_path = objects.name)))
+  with check (bucket_id = 'attachments' and (storage.foldername(name))[1] = (select auth.uid())::text);

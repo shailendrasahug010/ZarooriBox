@@ -31,7 +31,14 @@ export interface Messenger {
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 export function emailHtml(to: Recipient, msg: PlannedMessage, appUrl: string): string {
-  const items = msg.lines.map((l) => `<li style="margin:6px 0">${escapeHtml(l)}</li>`).join('');
+  const btn = 'color:#17745D;font-weight:600;text-decoration:none;margin-right:14px';
+  const actions = (i: number) => {
+    const link = msg.actionLinks?.[i];
+    if (!link) return '';
+    const a = (act: string, label: string) => `<a href="${escapeHtml(`${link}&do=${act}`)}" style="${btn}">${label}</a>`;
+    return `<br><span style="font-size:14px">${a('done', '✓ Done')}${a('tomorrow', 'Tomorrow')}${a('week', 'Next week')}</span>`;
+  };
+  const items = msg.lines.map((l, i) => `<li style="margin:10px 0">${escapeHtml(l)}${actions(i)}</li>`).join('');
   return `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:auto;color:#1c1917">
   <p style="font-size:16px">Hi ${escapeHtml(to.name || 'there')},</p>
   <p style="font-size:16px">Here’s what needs your attention:</p>

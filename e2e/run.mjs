@@ -63,7 +63,11 @@ await step('Sign up creates account and shows empty states', async () => {
   await page.fill('#su-email', email);
   await page.fill('#su-password', 'lifebox123');
   await page.getByRole('button', { name: 'Create account' }).click();
-  await page.waitForURL('**/app');
+  // A brand-new account starts with the short setup; skipping it lands on the dashboard.
+  await page.waitForURL('**/app/welcome');
+  await page.getByText('Welcome to LifeBox, Meera!').waitFor();
+  await page.getByRole('button', { name: 'Skip' }).click();
+  await page.waitForURL(/\/app$/);
   await page.getByText('Good', { exact: false }).first().waitFor();
   await page.getByText('No forgotten things here').waitFor();
   await page.getByText('Your shopping list is empty.').waitFor();
@@ -269,8 +273,64 @@ await step('A second user sees none of the first user’s data', async () => {
   await page.fill('#su-email', `kabir${Date.now()}@example.com`);
   await page.fill('#su-password', 'kabirpass1');
   await page.getByRole('button', { name: 'Create account' }).click();
-  await page.waitForURL('**/app');
-  await page.getByText('Your LifeBox is empty').waitFor();
+  await page.waitForURL('**/app/welcome');
+  await page.goto(`${BASE}/app/search?q=insurance`);
+  await page.getByText('Nothing found for “insurance”').waitFor();
+});
+
+await step('First-run setup: three steps, first item added, then the dashboard', async () => {
+  await page.goto(`${BASE}/app`);
+  await page.waitForURL('**/app/welcome');
+  await page.getByText('Welcome to LifeBox, Kabir!').waitFor();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByText('Add your first one').waitFor();
+  await page.fill('#quick-add-input', 'Pay rent on the 5th every month');
+  await page.press('#quick-add-input', 'Enter');
+  await page.getByText(/Remembered/).first().waitFor();
+  await page.getByRole('button', { name: 'Go to my LifeBox' }).click();
+  await page.waitForURL(/\/app$/);
+  await page.reload();
+  await page.waitForTimeout(300);
+  expect(!page.url().includes('welcome'), 'setup should not come back');
+});
+
+await step('Language: switching to Hindi changes the screens, and back', async () => {
+  await page.goto(`${BASE}/app/settings#language`);
+  await page.selectOption('#set-lang', 'hi');
+  await page.getByText('ऐप की भाषा').waitFor();
+  await page.goto(`${BASE}/app`);
+  await page.getByRole('region', { name: 'आज करना है' }).waitFor();
+  expect((await page.getAttribute('html', 'lang')) === 'hi', 'html lang is hi');
+  await page.goto(`${BASE}/app/settings#language`);
+  await page.selectOption('#set-lang', 'en');
+  await page.getByText('App language').waitFor();
+});
+
+await step('Family sharing explains it needs a cloud account in the offline build', async () => {
+  await page.goto(`${BASE}/app/settings`);
+  await page.getByText('Family sharing works with a LifeBox cloud account').waitFor();
+});
+
+await step('Share to LifeBox puts the shared text into Quick Add', async () => {
+  await page.goto(`${BASE}/app/share?title=${encodeURIComponent('Gas cylinder')}&text=${encodeURIComponent('Gas cylinder booking on 20 October')}`);
+  await page.getByText('Add to LifeBox').first().waitFor();
+  expect((await page.inputValue('#quick-add-input')) === 'Gas cylinder booking on 20 October', 'shared text prefilled');
+  await page.press('#quick-add-input', 'Enter');
+  await page.waitForURL(/\/app$/);
+  await page.goto(`${BASE}/app/search?q=cylinder`);
+  await page.getByText(/Gas Cylinder/i).first().waitFor();
+});
+
+await step('Scanning a photo without AI attaches nothing on Free and explains', async () => {
+  await page.goto(`${BASE}/app/add?scan=1`);
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  await page.locator('input[type=file]').last().setInputFiles({ name: 'bill.png', mimeType: 'image/png', buffer: png });
+  await page.getByText('Automatic reading isn’t switched on yet').waitFor();
+  await page.locator('#mf-title').waitFor();
+});
+
+await step('Second user search stays empty of the first user’s data', async () => {
   await page.goto(`${BASE}/app/search?q=insurance`);
   await page.getByText('Nothing found for “insurance”').waitFor();
 });
@@ -362,6 +422,74 @@ await step('Installable: manifest, icons and offline service worker', async () =
   await p.goto(`${BASE}/app`);
   await p.locator('#root *').first().waitFor();
   await v.ctx.setOffline(false);
+  await v.ctx.close();
+});
+
+await step('Home-screen "Add by voice" shortcut starts listening', async () => {
+  const v = await newPage({ width: 390, height: 844 }, true);
+  const p = v.page;
+  await v.ctx.addInitScript(() => {
+    window.SpeechRecognition = window.webkitSpeechRecognition = class {
+      start() { window.__listening = true; }
+      stop() { setTimeout(() => this.onend?.(), 10); }
+      abort() {}
+    };
+  });
+  await p.goto(`${BASE}/login`);
+  await p.getByRole('button', { name: /Try the demo/ }).click();
+  await p.waitForURL('**/app');
+  await p.goto(`${BASE}/app?voice=1`);
+  await p.getByRole('button', { name: 'Stop listening' }).waitFor();
+  expect(await p.evaluate(() => window.__listening === true), 'recognizer started');
+  const manifest = await (await p.request.get(`${BASE}/manifest.webmanifest`)).json();
+  expect(manifest.share_target?.action === '/app/share', 'web share target');
+  expect(manifest.shortcuts.some((s) => s.url === '/app?voice=1'), 'voice shortcut');
+  await v.ctx.close();
+});
+
+await step('Swipe right marks done, swipe left snoozes, bell has quick actions', async () => {
+  const v = await newPage({ width: 390, height: 844 }, true);
+  const p = v.page;
+  await p.goto(`${BASE}/login`);
+  await p.getByRole('button', { name: /Try the demo/ }).click();
+  await p.waitForURL('**/app');
+  await p.getByText('Tip: swipe a reminder right').waitFor();
+  const rows = p.getByRole('region', { name: 'Coming Soon' }).locator('li');
+  const swipe = async (row, dir) => {
+    // Keep the row clear of the toast at the bottom of the screen.
+    await row.evaluate((e) => e.scrollIntoView({ block: 'center' }));
+    await p.waitForTimeout(100);
+    const b = await row.boundingBox();
+    const y = b.y + b.height / 2;
+    const x0 = b.x + b.width / 2;
+    await p.mouse.move(x0, y);
+    await p.mouse.down();
+    for (let i = 1; i <= 8; i++) await p.mouse.move(x0 + dir * i * 18, y);
+    await p.mouse.up();
+  };
+  const first = rows.first();
+  const title = (await first.innerText()).split('\n')[0];
+  await swipe(first, 1);
+  await p.getByText(/is done|Next one is on/).first().waitFor();
+  await swipe(rows.first(), -1);
+  await p.getByText('We’ll remind you tomorrow').first().waitFor();
+  expect(title.length > 0, 'had a row');
+
+  await p.getByRole('button', { name: /notification/i }).first().click();
+  const done = p.getByRole('button', { name: 'Done', exact: true });
+  if (await done.count()) {
+    await done.first().click();
+    await p.waitForTimeout(300);
+  }
+  await v.ctx.close();
+});
+
+await step('Public action page without a valid link says so', async () => {
+  const v = await newPage();
+  await v.page.goto(`${BASE}/act?t=bad`);
+  await v.page.locator('main, #root *').first().waitFor();
+  await v.page.waitForTimeout(500);
+  expect(!(await v.page.url()).includes('/login'), 'stays public');
   await v.ctx.close();
 });
 

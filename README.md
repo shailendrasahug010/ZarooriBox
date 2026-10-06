@@ -6,6 +6,15 @@ LifeBox is a personal memory assistant for bills, renewals, home maintenance, sh
 
 It runs as a website, as an installable web app, and as an Android and iPhone app built from the same code.
 
+### What it does
+
+- **Quick Add by typing or voice**, in English, Hindi or Hinglish ("कल बिजली का बिल भरना है", "Rahul ko 500 diye"). Voice works in 11 Indian languages plus Indian English.
+- **Scan a document**: photograph a passport, policy, bill or warranty card and LifeBox fills in the name, expiry or due date and amount (needs the AI key below).
+- **Done / Tomorrow / Next week** right from phone alerts, browser notifications, the bell and reminder emails. Swipe a reminder right to finish it, left to snooze it, with undo.
+- **Family sharing**: create a family in Settings, share the 8-letter invite code, then share any bill or item. The shopping list is shared automatically. Each person gets their own reminders at their own time.
+- **Hindi screens** (Settings → Language), a short first-run setup, and search across everything including attachment names.
+- **Faster adding on Android**: long-press the app icon for *Add by voice*, *Scan a document* and *Shopping list*, or share text or a photo from WhatsApp, Gallery or Messages to LifeBox.
+
 ## Run it locally
 
 Requires Node.js 20+.
@@ -58,6 +67,12 @@ supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 
 Only signed-in users can call it. Set `VITE_AI_QUICK_ADD=off` to use rules only.
 
+The same key powers **document scanning** (`supabase functions deploy scan-document`). Without it, a scanned photo is still attached and the person fills in the details.
+
+### Family sharing
+
+Family sharing needs a Supabase account (it is hidden in the offline build). The tables, row-level security and the `create_household`, `join_household` and `leave_household` functions are in [`supabase/schema.sql`](supabase/schema.sql). Members can see and update items shared with their family; only the owner can stop sharing an item. Leaving a family makes your own items private again.
+
 ### Email, WhatsApp and SMS reminders
 
 The `send-reminders` function sends each person what's due at the time they picked in Settings, in their own timezone: one morning summary, or one message per item if they turn the summary off. Each channel switches on when its secrets are set; the others keep working without it.
@@ -74,6 +89,12 @@ supabase secrets set LIFEBOX_APP_URL=https://your-site
 supabase secrets set RESEND_API_KEY=... RESEND_FROM="LifeBox <reminders@yourdomain.com>"
 ```
 
+Reminder emails carry **Done / Tomorrow / Next week** links. They open `LIFEBOX_APP_URL/act`, which asks the `reminder-action` function to make the change; the link is signed for one person and one item and expires after 30 days. Set `LIFEBOX_APP_URL` to your deployed site or the buttons point nowhere. Links are signed with the service role key unless you set `ACTION_SECRET`.
+
+```bash
+supabase functions deploy reminder-action --no-verify-jwt   # the signed link is the proof
+```
+
 Then run [`supabase/cron.sql`](supabase/cron.sql) (fill in your project ref) to call it every 15 minutes. It creates its own secret in Supabase Vault, so there is nothing to copy around. In the app, **Settings → Notifications** now has live switches, a mobile number field and **Send me a test message**. WhatsApp and SMS are Pro channels; set `LIFEBOX_EARLY_ACCESS=false` when you start charging.
 
 ## Phone app (Android and iPhone)
@@ -83,6 +104,8 @@ The `android/` and `ios/` folders are [Capacitor](https://capacitorjs.com) proje
 - **Voice Quick Add** with the phone's own speech recognizer (the website uses the browser's).
 - **Reminders while the app is closed**: alerts are scheduled with the phone at your chosen time.
 - Google sign-in through the system browser, the Android back button, splash screen and app icon.
+- **Done / Tomorrow / Next week buttons** on reminder alerts.
+- **Android home-screen shortcuts** (long-press the icon) and **Share to LifeBox** for text and photos. On iPhone, Share and Quick Actions need an extension added in Xcode; the `app.lifebox://add?voice=1`, `app.lifebox://scan` and `app.lifebox://share?text=…` links already work for Shortcuts.
 
 The phone app uses the same Supabase account as the website (it is built with `.env.production`). Build with `npm run build:local` instead to keep everything on the phone.
 
@@ -128,7 +151,7 @@ src/
 supabase/
   schema.sql               Tables, row-level security, ownership and settings-protection triggers
   cron.sql                 Runs send-reminders every 15 minutes
-  functions/               parse-quick-add (Claude) and send-reminders (Resend, WhatsApp, Twilio)
+  functions/               parse-quick-add and scan-document (Claude), send-reminders (Resend, WhatsApp, Twilio), reminder-action (email buttons)
 android/, ios/             Capacitor phone-app projects
 .github/workflows/         Tests, Android APK build, iOS build check
 e2e/                       Playwright walkthrough + screenshot script

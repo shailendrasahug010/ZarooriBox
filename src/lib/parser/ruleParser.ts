@@ -2,6 +2,7 @@ import type { CategoryId, ISODate, RepeatSpec, RepeatUnit } from '../../types';
 import { addDays, addUnit, fromISO, isValidISO, REPEAT_PRESETS, specFor, toISO } from '../dates';
 import { capitalizeName, formatMoney, titleCase } from '../format';
 import type { ParseContext, ParsedQuickAdd, ParsedShoppingItem, QuickAddParser } from './types';
+import { hindiHints, normalizeHindi } from './hindi';
 
 // Rule-based natural-language parser for Quick Add.
 // It works by peeling recognised phrases (repeat, date, amount) off the text,
@@ -334,7 +335,8 @@ function detectShopping(text: string): ParsedShoppingItem[] | null {
 const NOT_NAMES = new Set([
   'my', 'a', 'an', 'the', 'him', 'her', 'them', 'me', 'some', 'money', 'cash', 'it', 'this', 'that', 'his', 'our', 'to', 'from', 'back',
 ]);
-const NAME = "([a-z][a-z'-]*)";
+// Names may be written in any script ("Rahul", "राहुल").
+const NAME = "([\\p{L}][\\p{L}\\p{M}'-]*)";
 
 interface LendingHit {
   direction: 'lent' | 'borrowed';
@@ -346,13 +348,13 @@ function detectLending(text: string): LendingHit | null {
   const t = text.replace(/\s+/g, ' ').trim();
   const tries: [RegExp, 'lent' | 'borrowed', number, number][] = [
     // [regex, direction, personGroup, thingGroup]
-    [new RegExp(`\\b(?:i\\s+)?(?:have\\s+)?(?:lent|loaned|lend|gave|given)\\s+(?:(.*?)\\s+)?to\\s+${NAME}`, 'i'), 'lent', 2, 1],
-    [new RegExp(`\\b(?:i\\s+)?(?:have\\s+)?(?:lent|loaned|lend|gave|given)\\s+${NAME}\\s*(.*)$`, 'i'), 'lent', 1, 2],
-    [new RegExp(`\\b${NAME}\\s+owes\\s+me\\b\\s*(.*)$`, 'i'), 'lent', 1, 2],
-    [new RegExp(`\\b${NAME}\\s+(?:has|took|borrowed)\\s+my\\s+(.+)$`, 'i'), 'lent', 1, 2],
-    [new RegExp(`\\b(?:i\\s+)?(?:have\\s+)?borrowed\\s+(?:(.*?)\\s+)?from\\s+${NAME}`, 'i'), 'borrowed', 2, 1],
-    [new RegExp(`\\b(?:i\\s+)?owe\\s+${NAME}\\s*(.*)$`, 'i'), 'borrowed', 1, 2],
-    [new RegExp(`\\b${NAME}\\s+(?:lent|gave|loaned)\\s+me\\s+(.*)$`, 'i'), 'borrowed', 1, 2],
+    [new RegExp(`\\b(?:i\\s+)?(?:have\\s+)?(?:lent|loaned|lend|gave|given)\\s+(?:(.*?)\\s+)?to\\s+${NAME}`, 'iu'), 'lent', 2, 1],
+    [new RegExp(`\\b(?:i\\s+)?(?:have\\s+)?(?:lent|loaned|lend|gave|given)\\s+${NAME}\\s*(.*)$`, 'iu'), 'lent', 1, 2],
+    [new RegExp(`\\b${NAME}\\s+owes\\s+me\\b\\s*(.*)$`, 'iu'), 'lent', 1, 2],
+    [new RegExp(`\\b${NAME}\\s+(?:has|took|borrowed)\\s+my\\s+(.+)$`, 'iu'), 'lent', 1, 2],
+    [new RegExp(`\\b(?:i\\s+)?(?:have\\s+)?borrowed\\s+(?:(.*?)\\s+)?from\\s+${NAME}`, 'iu'), 'borrowed', 2, 1],
+    [new RegExp(`\\b(?:i\\s+)?owe\\s+${NAME}\\s*(.*)$`, 'iu'), 'borrowed', 1, 2],
+    [new RegExp(`\\b${NAME}\\s+(?:lent|gave|loaned)\\s+me\\s+(.*)$`, 'iu'), 'borrowed', 1, 2],
   ];
   for (const [re, direction, pg, tg] of tries) {
     const m = re.exec(t);
@@ -395,7 +397,8 @@ function cleanTitle(s: string): string {
 // ---------- Main ----------
 
 export function parseQuickAdd(raw: string, ctx: ParseContext): ParsedQuickAdd {
-  const text = raw.trim().replace(/\s+/g, ' ');
+  // Hindi / Hinglish phrases become English the extractors below understand.
+  const text = normalizeHindi(raw.trim().replace(/\s+/g, ' '));
   const today = ctx.today;
   const cur = new Cursor(text);
 
@@ -474,7 +477,7 @@ export function parseQuickAdd(raw: string, ctx: ParseContext): ParsedQuickAdd {
   }
 
   // 3. A memory
-  const rule = categorize(text);
+  const rule = categorize(`${text} ${hindiHints(raw)}`);
   const isExpiry = !!rule?.expiry || /\b(expire|expiry|expiring|renew|valid\s+till|valid\s+until)/i.test(text);
   let dueDate: ISODate | null = repeatHit?.anchor ?? dateHit?.date ?? null;
   if (!dueDate && repeatHit) {

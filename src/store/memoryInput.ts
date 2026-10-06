@@ -22,6 +22,8 @@ export interface MemoryInput {
   newFiles?: File[];
   removeAttachmentIds?: ID[];
   source?: 'manual' | 'quick_add';
+  /** Share with the family (only when the person is in one). */
+  shared?: boolean;
 }
 
 export interface LendingInput {

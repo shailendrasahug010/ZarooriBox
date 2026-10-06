@@ -1,5 +1,7 @@
 import type {
+  AppLanguage,
   Attachment,
+  Family,
   CollectionName,
   CollectionRecord,
   ID,
@@ -20,6 +22,7 @@ import { buildSeed, defaultSettings, deviceTimezone } from '../data/seed';
 import { addDays, diffDays, formatDate, nextOccurrenceAfter, todayISO } from '../lib/dates';
 import { capitalizeName, formatMoney, nowStamp, uid } from '../lib/format';
 import { can, limit } from '../lib/plans';
+import { t } from '../i18n';
 import type { ParsedQuickAdd } from '../lib/parser';
 import { collectDueReminders, toNotification, type DueReminder } from '../lib/notifications/scheduler';
 import { hasErrors, validateLending, validateMemory, type LendingInput, type MemoryInput } from './memoryInput';
@@ -41,10 +44,31 @@ export interface MemorySnapshot {
 
 export type CompleteResult = { kind: 'completed' } | { kind: 'rolled'; nextDue: string };
 
+/** What a reminder's quick action does: from a notification, an email or a swipe. */
+export type ReminderAction = 'done' | 'tomorrow' | 'week';
+export type ActionTarget = { kind: 'memory' | 'lending'; id: ID };
+
 export interface QuickAddResult {
   kind: ParsedQuickAdd['kind'];
   message: string;
   id?: ID;
+}
+
+/** Device-only record of in-app alerts for shared items owned by someone else, so we never write their rows. */
+const SEEN_KEY = (uid: ID) => `lifebox:v1:seen-shared:${uid}`;
+function readSeen(uid: ID): Record<string, string> {
+  try {
+    return JSON.parse(globalThis.localStorage?.getItem(SEEN_KEY(uid)) ?? '{}') as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+function writeSeen(uid: ID, seen: Record<string, string>) {
+  try {
+    globalThis.localStorage?.setItem(SEEN_KEY(uid), JSON.stringify(seen));
+  } catch {
+    /* best effort */
+  }
 }
 
 const clean = (s?: string) => {
@@ -83,14 +107,19 @@ export class LifeBoxStore {
     this.listeners.forEach((l) => l());
   }
 
+  private pending = 0;
+
   private async mutate(apply: (d: UserData) => UserData, persist: () => Promise<void>) {
     const prev = this.data;
     this.set(apply(prev));
+    this.pending++;
     try {
       await persist();
     } catch (e) {
       this.set(prev);
       throw e;
+    } finally {
+      this.pending--;
     }
   }
 
@@ -100,6 +129,20 @@ export class LifeBoxStore {
 
   get settings(): UserSettings {
     return this.data.settings ?? defaultSettings(this.uid);
+  }
+
+  get family(): Family | null {
+    return this.data.family ?? null;
+  }
+
+  /** Family sharing needs a cloud account (the local version has no server). */
+  get canUseFamily(): boolean {
+    return !!this.repo.family;
+  }
+
+  /** The owner of a memory's reminders, repeats and files: whoever owns the memory. */
+  private ownerOf(memoryId: ID): ID {
+    return this.data.memories.find((m) => m.id === memoryId)?.userId ?? this.uid;
   }
 
   // ---------- Lifecycle ----------
@@ -121,6 +164,17 @@ export class LifeBoxStore {
     if (this.mode === 'supabase' && this.data.settings && this.data.settings.timezone !== tz) {
       await this.updateSettings({ timezone: tz }).catch(() => {});
     }
+  }
+
+  /**
+   * Fetches the latest data, so changes made by family members (or on another
+   * device) show up. Skipped while a save is in flight, to keep optimistic edits.
+   */
+  async reload() {
+    if (this.pending) return;
+    const data = await this.repo.load();
+    if (this.pending || !data.settings) return;
+    this.set(data);
   }
 
   private async persistAll(data: UserData) {
@@ -174,7 +228,7 @@ export class LifeBoxStore {
       if (!input.dueDate) return null;
       return {
         id: existing?.id ?? uid('rem'),
-        userId: this.uid,
+        userId: existing?.userId ?? this.ownerOf(memoryId),
         memoryId,
         offsetDays: r.offsetDays,
         remindOn: addDays(input.dueDate, -r.offsetDays),
@@ -183,7 +237,7 @@ export class LifeBoxStore {
     }
     return {
       id: existing?.id ?? uid('rem'),
-      userId: this.uid,
+      userId: existing?.userId ?? this.ownerOf(memoryId),
       memoryId,
       // Keep the gap so it moves with the due date when a repeat rolls forward.
       offsetDays: input.dueDate ? diffDays(r.date, input.dueDate) : null,
@@ -196,7 +250,7 @@ export class LifeBoxStore {
     if (input.repeat.frequency === 'never') return null;
     return {
       id: existing?.id ?? uid('rec'),
-      userId: this.uid,
+      userId: existing?.userId ?? this.ownerOf(memoryId),
       memoryId,
       frequency: input.repeat.frequency,
       interval: input.repeat.interval,
@@ -222,7 +276,7 @@ export class LifeBoxStore {
   private async storeFiles(memoryId: ID, files: File[] = []): Promise<Attachment[]> {
     const out: Attachment[] = [];
     for (const f of files) {
-      const base: Attachment = { id: uid('att'), userId: this.uid, memoryId, name: f.name, mimeType: f.type || 'application/octet-stream', size: f.size, createdAt: nowStamp() };
+      const base: Attachment = { id: uid('att'), userId: this.ownerOf(memoryId), memoryId, name: f.name, mimeType: f.type || 'application/octet-stream', size: f.size, createdAt: nowStamp() };
       out.push(await this.repo.storeFile(f, base));
     }
     return out;
@@ -254,6 +308,7 @@ export class LifeBoxStore {
       createdAt: stamp,
       updatedAt: stamp,
       completedAt: input.status === 'completed' ? stamp : null,
+      householdId: input.shared && this.family ? this.family.id : null,
     };
     const reminder = this.reminderFor(id, input);
     const recurrence = this.recurrenceFor(id, input);
@@ -281,7 +336,9 @@ export class LifeBoxStore {
     const errors = validateMemory(input);
     if (hasErrors(errors)) throw new ValidationError(errors);
     this.checkLimits(input, id);
-    const person = clean(input.personName) ? await this.ensurePerson(input.personName!) : null;
+    const mine = current.userId === this.uid;
+    // People are private, so a family member editing someone else's item keeps its person as is.
+    const personId = !mine ? current.personId ?? null : clean(input.personName) ? (await this.ensurePerson(input.personName!)).id : null;
     const added = await this.storeFiles(id, input.newFiles);
     const removeIds = new Set(input.removeAttachmentIds ?? []);
     const oldReminder = this.data.reminders.find((r) => r.memoryId === id);
@@ -297,11 +354,13 @@ export class LifeBoxStore {
       dueDate: input.dueDate || null,
       status: input.status,
       amount: input.amount ?? null,
-      personId: person?.id ?? null,
+      personId,
       location: clean(input.location) ?? '',
       notes: clean(input.notes) ?? '',
       updatedAt: stamp,
       completedAt: input.status === 'completed' ? current.completedAt ?? stamp : null,
+      // Only the owner decides whether an item is shared.
+      ...(mine && input.shared !== undefined ? { householdId: input.shared && this.family ? this.family.id : null } : {}),
     };
     await this.mutate(
       (d) => ({
@@ -531,6 +590,8 @@ export class LifeBoxStore {
         listCategory: i.listCategory || 'Grocery',
         purchased: false,
         createdAt: nowStamp(),
+        // In a family, the shopping list is shared.
+        householdId: this.family?.id ?? null,
       }));
     if (!rows.length) throw new ValidationError({ name: 'What do you need to buy?' });
     await this.mutate(
@@ -615,10 +676,18 @@ export class LifeBoxStore {
 
   /** Turns due reminders into in-app notifications. Returns the ones just created. */
   async runReminderCheck(today = todayISO()): Promise<DueReminder[]> {
-    const due = collectDueReminders(this.data, today);
+    const seen = readSeen(this.uid);
+    const isOthers = (d: DueReminder) => !!d.reminder && d.reminder.userId !== this.uid;
+    const due = collectDueReminders(this.data, today).filter((d) => !isOthers(d) || seen[d.reminder!.id] !== d.dueDate);
     if (!due.length) return [];
     const notes = due.map((d) => toNotification(d, this.uid, uid('ntf')));
-    const reminderIds = new Map(due.filter((d) => d.reminder).map((d) => [d.reminder!.id, d.dueDate]));
+    // Someone else's shared reminder: remember on this device instead of writing their row.
+    const theirs = due.filter(isOthers);
+    if (theirs.length) {
+      for (const d of theirs) seen[d.reminder!.id] = d.dueDate;
+      writeSeen(this.uid, seen);
+    }
+    const reminderIds = new Map(due.filter((d) => d.reminder && !isOthers(d)).map((d) => [d.reminder!.id, d.dueDate]));
     const lendingIds = new Set(due.filter((d) => d.lendingId).map((d) => d.lendingId!));
     const stamp = nowStamp();
     await this.mutate(
@@ -635,6 +704,61 @@ export class LifeBoxStore {
       },
     );
     return due;
+  }
+
+  // ---------- Quick actions (notifications, emails, swipes) ----------
+
+  /** Moves a memory's reminder to `days` from today, so it comes back then. */
+  async snoozeMemory(id: ID, days: number) {
+    const m = this.data.memories.find((x) => x.id === id);
+    if (!m) throw new Error('That item no longer exists.');
+    const remindOn = addDays(todayISO(), days);
+    const existing = this.data.reminders.find((r) => r.memoryId === id);
+    if (existing) {
+      const patch: Partial<Reminder> = { remindOn, notifiedFor: null };
+      await this.mutate(
+        (d) => ({ ...d, reminders: d.reminders.map((r) => (r.id === existing.id ? { ...r, ...patch } : r)) }),
+        () => this.repo.update('reminders', existing.id, patch),
+      );
+      return remindOn;
+    }
+    const r: Reminder = { id: uid('rem'), userId: m.userId, memoryId: id, offsetDays: null, remindOn, notifiedFor: null };
+    await this.mutate(
+      (d) => ({ ...d, reminders: [...d.reminders, r] }),
+      () => this.repo.insert('reminders', [r]),
+    );
+    return remindOn;
+  }
+
+  async snoozeLending(id: ID, days: number) {
+    const followUpDate = addDays(todayISO(), days);
+    await this.patchLending(id, { followUpDate, updatedAt: nowStamp() });
+    return followUpDate;
+  }
+
+  /** Runs a quick action and returns a short confirmation to show. */
+  async act(target: ActionTarget, action: ReminderAction): Promise<string> {
+    const days = action === 'week' ? 7 : 1;
+    const when = action === 'week' ? t('act.week').toLowerCase() : t('act.tomorrow').toLowerCase();
+    if (target.kind === 'lending') {
+      const l = this.data.lendings.find((x) => x.id === target.id);
+      if (!l) throw new Error('That item no longer exists.');
+      if (action === 'done') {
+        await this.setLendingReturned(l.id, true);
+        return t('act.settled');
+      }
+      await this.snoozeLending(l.id, days);
+      return t('act.snoozed', { when });
+    }
+    const m = this.data.memories.find((x) => x.id === target.id);
+    if (!m) throw new Error('That item no longer exists.');
+    if (action === 'done') {
+      if (m.status !== 'active') return t('act.alreadyDone', { title: m.title });
+      const r = await this.completeMemory(m.id);
+      return r.kind === 'rolled' ? t('act.rolledToast', { date: formatDate(r.nextDue) }) : t('act.doneToast', { title: m.title });
+    }
+    await this.snoozeMemory(m.id, days);
+    return t('act.snoozed', { when });
   }
 
   async markNotificationsRead(ids?: ID[]) {
@@ -655,6 +779,62 @@ export class LifeBoxStore {
       (d) => ({ ...d, notifications: [] }),
       () => this.repo.remove('notifications', ids),
     );
+  }
+
+  async finishOnboarding() {
+    await this.updateSettings({ onboardedAt: nowStamp() });
+  }
+
+  async setLanguage(language: AppLanguage) {
+    await this.updateSettings({ language });
+  }
+
+  // ---------- Family ----------
+
+  private familyService() {
+    if (!this.repo.family) throw new Error('Family sharing needs a LifeBox cloud account.');
+    return this.repo.family;
+  }
+
+  private async afterFamilyChange() {
+    const family = await this.familyService().load();
+    this.set({ ...this.data, family });
+    await this.reload().catch(() => {});
+  }
+
+  async createFamily(name: string) {
+    await this.familyService().create(name.trim().slice(0, 60), this.user.name);
+    await this.afterFamilyChange();
+  }
+
+  async joinFamily(code: string) {
+    const c = code.replace(/[^a-z0-9]/gi, '').toUpperCase();
+    if (c.length !== 8) throw new ValidationError({ code: 'Invite codes have 8 letters and numbers.' });
+    await this.familyService().join(c, this.user.name);
+    await this.afterFamilyChange();
+  }
+
+  async leaveFamily() {
+    await this.familyService().leave();
+    await this.afterFamilyChange();
+  }
+
+  /** Shares (or stops sharing) one of your own memories with your family. */
+  async setShared(id: ID, shared: boolean) {
+    const m = this.data.memories.find((x) => x.id === id);
+    if (!m || m.userId !== this.uid) throw new Error('Only the person who added this can change sharing.');
+    if (shared && !this.family) throw new Error('Create or join a family first.');
+    const patch: Partial<Memory> = { householdId: shared ? this.family!.id : null, updatedAt: nowStamp() };
+    await this.mutate(
+      (d) => ({ ...d, memories: d.memories.map((x) => (x.id === id ? { ...x, ...patch } : x)) }),
+      () => this.repo.update('memories', id, patch),
+    );
+  }
+
+  /** Who added a shared item, for "Added by Priya". Null for your own items. */
+  addedBy(userId: ID): string | null {
+    if (userId === this.uid) return null;
+    return this.family?.members.find((m) => m.userId === userId)?.displayName ?? 'Family member';
   }
 
   async updateSettings(patch: Partial<Omit<UserSettings, 'userId'>>) {

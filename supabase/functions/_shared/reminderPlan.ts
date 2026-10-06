@@ -5,8 +5,9 @@
 // - Each person gets messages once a day, at their chosen time in their own timezone
 //   (never at 3 a.m. because a server clock says so).
 // - "Morning summary" on: one message listing everything. Off: one message per item.
-// - Each reminder is delivered once per due date (reminders.delivered_for), and each
-//   lending follow-up once per follow-up date (lendings.delivered_for).
+// - Each reminder is delivered once per reminder date (reminders.delivered_for holds the
+//   remind_on it was sent for), so snoozing or a repeat rolling forward sends it again.
+//   Each lending follow-up is delivered once per follow-up date (lendings.delivered_for).
 
 export type ExternalChannel = 'email' | 'whatsapp' | 'sms';
 
@@ -41,12 +42,21 @@ export interface DueLending {
   delivered_for: string | null;
 }
 
+export interface ActionTarget {
+  kind: 'memory' | 'lending';
+  id: string;
+}
+
 export interface PlannedMessage {
   channel: ExternalChannel;
   subject: string;
   text: string;
   /** Lines in the message, for the email's HTML list. */
   lines: string[];
+  /** What each line is about (same order as lines), for Done / Snooze links. */
+  targets?: ActionTarget[];
+  /** Filled in by send-reminders: a signed /act link per line (email only). */
+  actionLinks?: string[];
 }
 
 export interface Plan {
@@ -114,15 +124,19 @@ export function planForUser(
   const sendAt = /^\d{2}:\d{2}$/.test(s.notifications?.digestTime ?? '') ? s.notifications.digestTime! : '08:00';
   if (time < sendAt || s.last_digest_on === today) return null;
 
-  const dueReminders = reminders.filter((r) => r.remind_on <= today && r.delivered_for !== r.due_date && dayDiff(r.due_date, today) >= -7);
+  const dueReminders = reminders.filter((r) => r.remind_on <= today && r.delivered_for !== r.remind_on && dayDiff(r.due_date, today) >= -7);
   const dueLendings = lendings.filter((l) => l.follow_up_date <= today && l.delivered_for !== l.follow_up_date);
   if (!dueReminders.length && !dueLendings.length) return { localDate: today, messages: [], reminderUpdates: [], lendingUpdates: [] };
 
   const items = [
     ...dueReminders
       .sort((a, b) => a.due_date.localeCompare(b.due_date))
-      .map((r) => ({ subject: `${r.title}: due ${whenText(r.due_date, today)}`, line: `${r.title} (due ${whenText(r.due_date, today)})` })),
-    ...dueLendings.map((l) => ({ subject: `Follow up: ${l.title}`, line: `Follow up: ${l.title}` })),
+      .map((r) => ({
+        subject: `${r.title}: due ${whenText(r.due_date, today)}`,
+        line: `${r.title} (due ${whenText(r.due_date, today)})`,
+        target: { kind: 'memory', id: r.memory_id } as ActionTarget,
+      })),
+    ...dueLendings.map((l) => ({ subject: `Follow up: ${l.title}`, line: `Follow up: ${l.title}`, target: { kind: 'lending', id: l.lending_id } as ActionTarget })),
   ];
 
   const messages: PlannedMessage[] = [];
@@ -130,15 +144,15 @@ export function planForUser(
     if (s.notifications.dailyDigest !== false) {
       const lines = items.map((i) => i.line);
       const subject = items.length === 1 ? `LifeBox: ${items[0].subject}` : `LifeBox: ${items.length} things need you today`;
-      messages.push({ channel, subject, lines, text: `Good morning! From LifeBox:\n${lines.map((l) => `• ${l}`).join('\n')}` });
+      messages.push({ channel, subject, lines, targets: items.map((i) => i.target), text: `Good morning! From LifeBox:\n${lines.map((l) => `• ${l}`).join('\n')}` });
     } else {
-      for (const i of items) messages.push({ channel, subject: `LifeBox: ${i.subject}`, lines: [i.line], text: `LifeBox reminder: ${i.line}` });
+      for (const i of items) messages.push({ channel, subject: `LifeBox: ${i.subject}`, lines: [i.line], targets: [i.target], text: `LifeBox reminder: ${i.line}` });
     }
   }
   return {
     localDate: today,
     messages,
-    reminderUpdates: dueReminders.map((r) => ({ id: r.reminder_id, deliveredFor: r.due_date })),
+    reminderUpdates: dueReminders.map((r) => ({ id: r.reminder_id, deliveredFor: r.remind_on })),
     lendingUpdates: dueLendings.map((l) => ({ id: l.lending_id, deliveredFor: l.follow_up_date })),
   };
 }

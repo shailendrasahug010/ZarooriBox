@@ -19,20 +19,22 @@ import { NotificationBell } from '../components/NotificationBell';
 import { Logo, cx } from '../components/ui';
 import { useData } from '../store/DataProvider';
 import { EARLY_ACCESS } from '../lib/plans';
+import { registerNavigator } from '../lib/appNavigation';
+import { useT, type MessageKey } from '../i18n';
 
 type Icon = ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
 
-const NAV: { to: string; label: string; icon: Icon; end?: boolean }[] = [
-  { to: '/app', label: 'Home', icon: House, end: true },
-  { to: '/app/add', label: 'Add', icon: Plus },
-  { to: '/app/upcoming', label: 'Upcoming', icon: CalendarClock },
-  { to: '/app/expiry', label: 'Expiry Radar', icon: Radar },
-  { to: '/app/shopping', label: 'Shopping', icon: ShoppingCart },
-  { to: '/app/people', label: 'People & Things', icon: Users },
-  { to: '/app/home-maintenance', label: 'Home Maintenance', icon: Wrench },
-  { to: '/app/search', label: 'Search', icon: Search },
-  { to: '/app/calendar', label: 'Calendar', icon: CalendarDays },
-  { to: '/app/settings', label: 'Settings', icon: Settings },
+const NAV: { to: string; label: MessageKey; icon: Icon; end?: boolean }[] = [
+  { to: '/app', label: 'nav.home', icon: House, end: true },
+  { to: '/app/add', label: 'nav.add', icon: Plus },
+  { to: '/app/upcoming', label: 'nav.upcoming', icon: CalendarClock },
+  { to: '/app/expiry', label: 'nav.expiry', icon: Radar },
+  { to: '/app/shopping', label: 'nav.shopping', icon: ShoppingCart },
+  { to: '/app/people', label: 'nav.people', icon: Users },
+  { to: '/app/home-maintenance', label: 'nav.homeMaintenance', icon: Wrench },
+  { to: '/app/search', label: 'nav.search', icon: Search },
+  { to: '/app/calendar', label: 'nav.calendar', icon: CalendarDays },
+  { to: '/app/settings', label: 'nav.settings', icon: Settings },
 ];
 
 const LIST_ROUTES = ['/app/lists', '/app/shopping', '/app/people', '/app/home-maintenance', '/app/expiry', '/app/calendar', '/app/search'];
@@ -79,7 +81,11 @@ export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [q, setQ] = useState('');
+  const t = useT();
   const path = location.pathname;
+
+  // Notification taps and deep links can now move the app.
+  useEffect(() => registerNavigator((p) => navigate(p)), [navigate]);
   const open = data.lendings.filter((l) => l.status === 'open').length;
 
   useEffect(() => {
@@ -114,7 +120,7 @@ export function AppLayout() {
         </Link>
         <nav className="flex-1 space-y-0.5 overflow-y-auto">
           {NAV.map((n) => (
-            <SidebarLink key={n.to} {...n} badge={n.to === '/app/people' ? open : undefined} />
+            <SidebarLink key={n.to} {...n} label={t(n.label)} badge={n.to === '/app/people' ? open : undefined} />
           ))}
         </nav>
         <Link to="/app/settings" className="mt-4 flex items-center gap-3 rounded-2xl bg-surface p-3 shadow-card transition hover:shadow-lift">
@@ -144,24 +150,24 @@ export function AppLayout() {
               }}
             >
               <label className="relative block">
-                <span className="sr-only">Search LifeBox</span>
+                <span className="sr-only">{t('nav.search')}</span>
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
                 <input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search everything…"
+                  placeholder={t('nav.searchEverything')}
                   className="h-11 w-full rounded-xl border border-line bg-surface pl-10 pr-14 text-sm outline-none transition focus:border-brand-500 focus:shadow-focus"
                 />
                 <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-line px-1.5 text-[0.7rem] text-muted">Ctrl K</kbd>
               </label>
             </form>
             <div className="ml-auto flex items-center gap-1">
-              <Link to="/app/search" className="icon-btn lg:hidden" aria-label="Search">
+              <Link to="/app/search" className="icon-btn lg:hidden" aria-label={t('nav.search')}>
                 <Search className="size-5" />
               </Link>
               <NotificationBell />
               <Link to="/app/add" className="btn btn-primary btn-sm ml-1 hidden lg:inline-flex">
-                <Plus className="size-4" aria-hidden="true" /> New memory
+                <Plus className="size-4" aria-hidden="true" /> {t('nav.newMemory')}
               </Link>
             </div>
           </div>
@@ -180,20 +186,20 @@ export function AppLayout() {
         className="fixed inset-x-0 bottom-0 z-30 border-t border-line/80 bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
       >
         <div className="mx-auto flex max-w-lg items-end px-2">
-          <BottomLink to="/app" label="Home" icon={House} active={path === '/app'} />
-          <BottomLink to="/app/upcoming" label="Upcoming" icon={CalendarClock} active={path.startsWith('/app/upcoming')} />
+          <BottomLink to="/app" label={t('nav.home')} icon={House} active={path === '/app'} />
+          <BottomLink to="/app/upcoming" label={t('nav.upcoming')} icon={CalendarClock} active={path.startsWith('/app/upcoming')} />
           <div className="flex flex-1 justify-center">
             <Link
               to="/app/add"
-              aria-label="Add a memory"
+              aria-label={t('nav.addMemory')}
               aria-current={path === '/app/add' ? 'page' : undefined}
               className="-mt-6 grid size-[3.6rem] place-items-center rounded-[1.35rem] bg-brand-600 text-white shadow-[0_10px_24px_-8px_rgb(23_116_93/0.7)] ring-4 ring-paper transition active:scale-95"
             >
               <Plus className="size-7" strokeWidth={2.5} aria-hidden="true" />
             </Link>
           </div>
-          <BottomLink to="/app/lists" label="Lists" icon={LayoutGrid} active={LIST_ROUTES.some((r) => path.startsWith(r))} />
-          <BottomLink to="/app/settings" label="Profile" icon={User} active={path.startsWith('/app/settings')} />
+          <BottomLink to="/app/lists" label={t('nav.lists')} icon={LayoutGrid} active={LIST_ROUTES.some((r) => path.startsWith(r))} />
+          <BottomLink to="/app/settings" label={t('nav.profile')} icon={User} active={path.startsWith('/app/settings')} />
         </div>
       </nav>
     </div>

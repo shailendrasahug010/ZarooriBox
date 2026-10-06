@@ -36,7 +36,16 @@ export const VOICE_ERROR_TEXT: Record<VoiceError, string> = {
 
 export function defaultVoiceLang(): string {
   const nav = typeof navigator !== 'undefined' ? navigator.language : '';
+  // Indian-language devices (hi-IN, ta-IN…) listen in that language; others in English.
+  if (/^(hi|bn|mr|te|ta|gu|kn|ml|pa|or|ur)-IN$/i.test(nav)) return nav;
   return /^en-/i.test(nav) ? nav : 'en-IN';
+}
+
+/** The person's chosen voice language, else Hindi for the Hindi app, else the device's. */
+export function voiceLangFor(settings: { voiceLanguage?: string | null }, appLanguage: string): string {
+  if (settings.voiceLanguage) return settings.voiceLanguage;
+  if (appLanguage === 'hi') return 'hi-IN';
+  return defaultVoiceLang();
 }
 
 // ---- Web Speech API ------------------------------------------------------------

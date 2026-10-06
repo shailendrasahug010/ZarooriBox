@@ -5,7 +5,8 @@ import { MEMORY_CATEGORIES, getCategory } from '../lib/categories';
 import { REPEAT_LABELS, REPEAT_PRESETS, addDays, formatDate } from '../lib/dates';
 import { useData } from '../store/DataProvider';
 import type { FieldErrors, MemoryInput, ReminderChoice } from '../store/memoryInput';
-import { Field, Segmented, cx } from './ui';
+import { Field, Segmented, Switch, cx } from './ui';
+import { useT } from '../i18n';
 
 const REMINDER_OPTIONS: { value: string; label: string }[] = [
   { value: 'none', label: 'No reminder' },
@@ -34,14 +35,19 @@ export interface MemoryFormProps {
   onCancel: () => void;
   errors: FieldErrors;
   saving: boolean;
+  /** Files to attach from the start (a scanned document). */
+  initialFiles?: File[];
+  /** Family name when the person may share this item; omit to hide the switch. */
+  shareWith?: string;
 }
 
-export function MemoryForm({ initial, existingAttachments = [], submitLabel, onSubmit, onCancel, errors, saving }: MemoryFormProps) {
+export function MemoryForm({ initial, existingAttachments = [], submitLabel, onSubmit, onCancel, errors, saving, initialFiles = [], shareWith }: MemoryFormProps) {
   const data = useData();
+  const t = useT();
   const [f, setF] = useState<MemoryInput>(initial);
   const [removed, setRemoved] = useState<string[]>([]);
-  const [files, setFiles] = useState<File[]>([]);
-  const hasExtras = !!(initial.amount || initial.personName || initial.location || initial.notes || existingAttachments.length);
+  const [files, setFiles] = useState<File[]>(initialFiles);
+  const hasExtras = !!(initial.amount || initial.personName || initial.location || initial.notes || existingAttachments.length || initialFiles.length);
   const [moreOpen, setMoreOpen] = useState(hasExtras);
   const set = <K extends keyof MemoryInput>(k: K, v: MemoryInput[K]) => setF((x) => ({ ...x, [k]: v }));
   const cat = getCategory(f.categoryId);
@@ -261,6 +267,18 @@ export function MemoryForm({ initial, existingAttachments = [], submitLabel, onS
           </div>
         )}
       </div>
+
+      {shareWith && (
+        <div className="flex items-start justify-between gap-4 rounded-2xl border border-line bg-surface p-4">
+          <span>
+            <span className="block font-semibold" id="mf-share-label">
+              👨‍👩‍👧 {t('fam.shareThis')}
+            </span>
+            <span className="block text-sm text-muted">{t('fam.shareHint', { name: shareWith })}</span>
+          </span>
+          <Switch checked={!!f.shared} onChange={(v) => set('shared', v)} label={t('fam.shareThis')} />
+        </div>
+      )}
 
       <div>
         <span className="label">Status</span>

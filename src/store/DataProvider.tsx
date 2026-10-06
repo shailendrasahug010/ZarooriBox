@@ -4,6 +4,7 @@ import { createRepository } from '../data';
 import { deviceChannel } from '../lib/notifications/channels';
 import { isNativeApp, syncNativeSchedule } from '../lib/notifications/native';
 import { buildLendingViews, buildMemoryViews } from '../lib/selectors';
+import { getLanguage, setLanguage } from '../i18n';
 import type { UserData } from '../types';
 import { LifeBoxStore } from './LifeBoxStore';
 
@@ -38,7 +39,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         // The phone app schedules its alerts with the OS (below), so no duplicate pop-up here.
         if (!fired.length || !store.settings.notifications.browser || isNativeApp()) return;
         if (fired.length === 1) {
-          await deviceChannel.send({ title: fired[0].title, body: fired[0].body, tag: `lifebox-${fired[0].dueDate}`, url: '/app' });
+          const f = fired[0];
+          const target = f.memoryId ? { kind: 'memory' as const, id: f.memoryId } : f.lendingId ? { kind: 'lending' as const, id: f.lendingId } : undefined;
+          await deviceChannel.send({ title: f.title, body: f.body, tag: `lifebox-${f.dueDate}`, url: '/app', target });
         } else {
           await deviceChannel.send({ title: `LifeBox: ${fired.length} things need you`, body: fired.slice(0, 3).map((f) => f.title).join(', '), tag: 'lifebox-digest', url: '/app' });
         }
@@ -49,6 +52,37 @@ export function DataProvider({ children }: { children: ReactNode }) {
     check();
     const t = window.setInterval(check, CHECK_EVERY_MS);
     return () => window.clearInterval(t);
+  }, [store]);
+
+  // The app speaks the language saved in the person's settings.
+  useEffect(() => {
+    if (!store) return;
+    const apply = () => {
+      const lang = store.settings.language;
+      if (lang && lang !== getLanguage()) setLanguage(lang);
+    };
+    apply();
+    const unsubscribe = store.subscribe(apply);
+    return () => {
+      unsubscribe();
+    };
+  }, [store]);
+
+  // Cloud accounts: pick up changes from family members and other devices when the
+  // app comes back to the foreground, and every couple of minutes while in a family.
+  useEffect(() => {
+    if (!store || store.mode !== 'supabase') return;
+    const refresh = () => {
+      if (document.visibilityState === 'visible') void store.reload().catch(() => {});
+    };
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    const t = window.setInterval(() => store.family && refresh(), 120_000);
+    return () => {
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', refresh);
+      window.clearInterval(t);
+    };
   }, [store]);
 
   // Phone app: keep the OS notification schedule in step with the data.

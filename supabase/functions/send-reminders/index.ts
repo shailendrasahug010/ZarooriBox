@@ -7,12 +7,17 @@
 // - A signed-in person can POST { "test": true } from Settings to get a test message
 //   on each channel they switched on.
 //
+// Family members get their own reminders for items shared with their family, at their
+// own time and on their own channels. Emails carry Done / Tomorrow / Next week links
+// (signed per person and item, see _shared/actionToken.ts) that open LIFEBOX_APP_URL/act.
+//
 // Secrets: the provider keys listed in _shared/messaging.ts. The scheduler's secret
 // is generated in Vault by cron.sql (or set CRON_SECRET to use your own).
 // SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase.
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders, json } from '../_shared/cors.ts';
+import { actionSecret, signAction } from '../_shared/actionToken.ts';
 import { createMessenger, type Recipient } from '../_shared/messaging.ts';
 import { enabledChannels, planForUser, type DueLending, type DueReminder, type ExternalChannel, type SettingsRow } from '../_shared/reminderPlan.ts';
 
@@ -22,6 +27,23 @@ const messenger = createMessenger(env);
 const admin = () => createClient(env('SUPABASE_URL')!, env('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
 
 const SETTINGS_COLS = 'user_id, plan, phone, timezone, last_digest_on, notifications';
+const APP_URL = (env('LIFEBOX_APP_URL') ?? 'https://lifebox.app').replace(/\/$/, '');
+
+interface ReminderRow {
+  id: string;
+  user_id: string;
+  remind_on: string;
+  delivered_for: string | null;
+  delivered_to: Record<string, string> | null;
+  memories: { id: string; title: string; due_date: string | null; status: string };
+}
+
+const REMINDER_COLS = 'id, user_id, remind_on, delivered_for, delivered_to, memories!inner(id, title, due_date, status, household_id)';
+
+async function householdOf(sb: SupabaseClient, userId: string): Promise<string | null> {
+  const { data } = await sb.from('household_members').select('household_id').eq('user_id', userId).eq('active', true).maybeSingle();
+  return data?.household_id ?? null;
+}
 
 function money(amount: number | null, currency: string) {
   if (amount == null) return '';
@@ -81,13 +103,13 @@ async function runSchedule(sb: SupabaseClient, now: Date) {
     const channels = configuredChannels(s);
     if (!channels.length) continue;
 
-    const [{ data: rem }, { data: len }] = await Promise.all([
-      sb
-        .from('reminders')
-        .select('id, remind_on, delivered_for, memories!inner(id, title, due_date, status)')
-        .eq('user_id', s.user_id)
-        .eq('memories.status', 'active')
-        .lte('remind_on', horizon),
+    const household = await householdOf(sb, s.user_id);
+    const [{ data: rem }, { data: shared }, { data: len }] = await Promise.all([
+      sb.from('reminders').select(REMINDER_COLS).eq('user_id', s.user_id).eq('memories.status', 'active').lte('remind_on', horizon),
+      // Items other family members share with this person.
+      household
+        ? sb.from('reminders').select(REMINDER_COLS).neq('user_id', s.user_id).eq('memories.household_id', household).eq('memories.status', 'active').lte('remind_on', horizon)
+        : Promise.resolve({ data: [] }),
       sb
         .from('lendings')
         .select('id, user_id, follow_up_date, delivered_for, direction, kind, amount, currency, item_name, people(name)')
@@ -97,11 +119,13 @@ async function runSchedule(sb: SupabaseClient, now: Date) {
         .lte('follow_up_date', horizon),
     ]);
 
-    const reminders: DueReminder[] = (rem ?? []).flatMap((r) => {
-      const m = r.memories as unknown as { id: string; title: string; due_date: string | null };
-      return m?.due_date
-        ? [{ reminder_id: r.id, memory_id: m.id, title: m.title, due_date: m.due_date, remind_on: r.remind_on, delivered_for: r.delivered_for }]
-        : [];
+    const rows = [...((rem ?? []) as unknown as ReminderRow[]), ...((shared ?? []) as unknown as ReminderRow[])];
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const reminders: DueReminder[] = rows.flatMap((r) => {
+      const m = r.memories;
+      // The owner's deliveries are in delivered_for; each family member's in delivered_to.
+      const delivered = r.user_id === s.user_id ? r.delivered_for : r.delivered_to?.[s.user_id] ?? null;
+      return m?.due_date ? [{ reminder_id: r.id, memory_id: m.id, title: m.title, due_date: m.due_date, remind_on: r.remind_on, delivered_for: delivered }] : [];
     });
     const lendings: DueLending[] = ((len ?? []) as unknown as LendingRow[]).map((l) => ({
       lending_id: l.id,
@@ -117,7 +141,11 @@ async function runSchedule(sb: SupabaseClient, now: Date) {
     let anyOk = plan.messages.length === 0;
     if (plan.messages.length) {
       const to = await recipientFor(sb, s);
+      const secret = actionSecret(env);
       for (const msg of plan.messages) {
+        if (msg.channel === 'email' && secret && msg.targets) {
+          msg.actionLinks = await Promise.all(msg.targets.map(async (t) => `${APP_URL}/act?t=${await signAction(secret, s.user_id, t)}`));
+        }
         const res = await messenger.send(msg.channel, to, msg);
         if (res.ok) {
           anyOk = true;
@@ -131,7 +159,11 @@ async function runSchedule(sb: SupabaseClient, now: Date) {
     }
     // If every provider failed, leave things unmarked so the next run retries.
     if (!anyOk) continue;
-    for (const u of plan.reminderUpdates) await sb.from('reminders').update({ delivered_for: u.deliveredFor }).eq('id', u.id);
+    for (const u of plan.reminderUpdates) {
+      const row = byId.get(u.id);
+      if (!row || row.user_id === s.user_id) await sb.from('reminders').update({ delivered_for: u.deliveredFor }).eq('id', u.id);
+      else await sb.from('reminders').update({ delivered_to: { ...(row.delivered_to ?? {}), [s.user_id]: u.deliveredFor } }).eq('id', u.id);
+    }
     for (const u of plan.lendingUpdates) await sb.from('lendings').update({ delivered_for: u.deliveredFor }).eq('id', u.id);
     await sb.from('user_settings').update({ last_digest_on: plan.localDate }).eq('user_id', s.user_id);
   }
