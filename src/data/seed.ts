@@ -2,12 +2,22 @@ import type { CategoryId, ID, ISODate, Lending, Memory, Person, RecurringItem, R
 import { addDays, REPEAT_PRESETS, todayISO } from '../lib/dates';
 import { uid } from '../lib/format';
 
+export function deviceTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+  } catch {
+    return 'Asia/Kolkata';
+  }
+}
+
 export function defaultSettings(userId: ID): UserSettings {
   return {
     userId,
     currency: 'INR',
     defaultReminderDays: 1,
     plan: 'free',
+    phone: null,
+    timezone: deviceTimezone(),
     notifications: {
       inApp: true,
       browser: false,

@@ -9,6 +9,7 @@ let client: SupabaseClient | null = null;
 
 export function getSupabase(): SupabaseClient {
   if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
-  client ??= createClient(url!, anonKey!, { auth: { persistSession: true, autoRefreshToken: true } });
+  // PKCE lets the phone app finish Google sign-in from a deep link (see supabaseAuth.ts).
+  client ??= createClient(url!, anonKey!, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' } });
   return client;
 }

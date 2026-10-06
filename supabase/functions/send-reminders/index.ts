@@ -1,70 +1,192 @@
-// Supabase Edge Function (Deno): delivers due reminders over server-side channels.
-// Schedule it every 15 minutes with Supabase Cron. It uses the service role key,
-// so it runs on the server only and never ships to the browser.
+// Delivers LifeBox reminders by email, WhatsApp and SMS.
 //
-// Each channel is a small adapter; plug in a provider (Resend/SES for email,
-// WhatsApp Cloud API, MSG91/Twilio for SMS) by implementing `send`.
+// Two ways in:
+// - The scheduler (supabase/cron.sql) calls it every 15 minutes with the
+//   x-cron-secret header. It then works out, per person, whether it is their chosen
+//   time in their timezone and sends what is due (see _shared/reminderPlan.ts).
+// - A signed-in person can POST { "test": true } from Settings to get a test message
+//   on each channel they switched on.
+//
+// Secrets: CRON_SECRET, plus the provider keys listed in _shared/messaging.ts.
+// SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase.
 
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { corsHeaders, json } from '../_shared/cors.ts';
+import { createMessenger, type Recipient } from '../_shared/messaging.ts';
+import { enabledChannels, planForUser, type DueLending, type DueReminder, type ExternalChannel, type SettingsRow } from '../_shared/reminderPlan.ts';
 
-interface Delivery {
-  userId: string;
-  title: string;
-  body: string;
-}
+const env = (k: string) => Deno.env.get(k);
+const EARLY_ACCESS = env('LIFEBOX_EARLY_ACCESS') !== 'false';
+const messenger = createMessenger(env);
+const admin = () => createClient(env('SUPABASE_URL')!, env('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
 
-interface Channel {
-  id: 'email' | 'whatsapp' | 'sms';
-  enabled(prefs: Record<string, unknown>): boolean;
-  send(d: Delivery): Promise<void>;
-}
+const SETTINGS_COLS = 'user_id, plan, phone, timezone, last_digest_on, notifications';
 
-const channels: Channel[] = [
-  {
-    id: 'email',
-    enabled: (p) => p.email === true,
-    async send(_d) {
-      // TODO: call your email provider here.
-    },
-  },
-  {
-    id: 'whatsapp',
-    enabled: (p) => p.whatsapp === true,
-    async send(_d) {
-      // TODO: WhatsApp Cloud API template message (Pro).
-    },
-  },
-  {
-    id: 'sms',
-    enabled: (p) => p.sms === true,
-    async send(_d) {
-      // TODO: SMS provider (Pro).
-    },
-  },
-];
-
-Deno.serve(async () => {
-  const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  const today = new Date().toISOString().slice(0, 10);
-
-  const { data: due, error } = await sb
-    .from('reminders')
-    .select('id, user_id, remind_on, notified_for, memories!inner(id, title, due_date, status)')
-    .lte('remind_on', today)
-    .eq('memories.status', 'active');
-  if (error) return new Response(error.message, { status: 500 });
-
-  let sent = 0;
-  for (const r of due ?? []) {
-    const m = (r as any).memories;
-    if (!m?.due_date || r.notified_for === m.due_date) continue;
-    const { data: settings } = await sb.from('user_settings').select('notifications').eq('user_id', r.user_id).maybeSingle();
-    const prefs = (settings?.notifications ?? {}) as Record<string, unknown>;
-    const delivery = { userId: r.user_id, title: m.title, body: `Due ${m.due_date}` };
-    for (const c of channels) if (c.enabled(prefs)) await c.send(delivery);
-    await sb.from('notifications').insert({ id: crypto.randomUUID(), user_id: r.user_id, memory_id: m.id, title: m.title, body: delivery.body, channel: 'in_app' });
-    await sb.from('reminders').update({ notified_for: m.due_date }).eq('id', r.id);
-    sent++;
+function money(amount: number | null, currency: string) {
+  if (amount == null) return '';
+  try {
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
+  } catch {
+    return `${currency} ${amount}`;
   }
-  return Response.json({ sent });
+}
+
+interface LendingRow {
+  id: string;
+  user_id: string;
+  follow_up_date: string;
+  delivered_for: string | null;
+  direction: 'lent' | 'borrowed';
+  kind: 'money' | 'thing';
+  amount: number | null;
+  currency: string;
+  item_name: string | null;
+  people: { name: string } | null;
+}
+
+export function lendingTitle(l: LendingRow): string {
+  const who = l.people?.name ?? 'someone';
+  if (l.kind === 'money') {
+    const amt = money(l.amount, l.currency);
+    return l.direction === 'lent' ? `${who} owes you ${amt}` : `Pay ${who} back ${amt}`;
+  }
+  return l.direction === 'lent' ? `${who} has your ${l.item_name}` : `Return the ${l.item_name} to ${who}`;
+}
+
+async function recipientFor(sb: SupabaseClient, s: SettingsRow): Promise<Recipient> {
+  const { data } = await sb.auth.admin.getUserById(s.user_id);
+  const u = data?.user;
+  const meta = (u?.user_metadata ?? {}) as Record<string, unknown>;
+  const name = String(meta.name ?? meta.full_name ?? '').split(' ')[0];
+  return { email: u?.email ?? null, phone: s.phone, name };
+}
+
+function configuredChannels(s: SettingsRow): ExternalChannel[] {
+  return enabledChannels(s, EARLY_ACCESS).filter((c) => messenger.configured(c));
+}
+
+async function runSchedule(sb: SupabaseClient, now: Date) {
+  const { data: settings, error } = await sb
+    .from('user_settings')
+    .select(SETTINGS_COLS)
+    .or('notifications->>email.eq.true,notifications->>whatsapp.eq.true,notifications->>sms.eq.true');
+  if (error) throw error;
+
+  // Anyone on Earth is at most 14 hours ahead of UTC.
+  const horizon = new Date(now.getTime() + 15 * 3600_000).toISOString().slice(0, 10);
+  const summary = { users: 0, sent: 0, failed: 0 };
+
+  for (const s of (settings ?? []) as SettingsRow[]) {
+    const channels = configuredChannels(s);
+    if (!channels.length) continue;
+
+    const [{ data: rem }, { data: len }] = await Promise.all([
+      sb
+        .from('reminders')
+        .select('id, remind_on, delivered_for, memories!inner(id, title, due_date, status)')
+        .eq('user_id', s.user_id)
+        .eq('memories.status', 'active')
+        .lte('remind_on', horizon),
+      sb
+        .from('lendings')
+        .select('id, user_id, follow_up_date, delivered_for, direction, kind, amount, currency, item_name, people(name)')
+        .eq('user_id', s.user_id)
+        .eq('status', 'open')
+        .not('follow_up_date', 'is', null)
+        .lte('follow_up_date', horizon),
+    ]);
+
+    const reminders: DueReminder[] = (rem ?? []).flatMap((r) => {
+      const m = r.memories as unknown as { id: string; title: string; due_date: string | null };
+      return m?.due_date
+        ? [{ reminder_id: r.id, memory_id: m.id, title: m.title, due_date: m.due_date, remind_on: r.remind_on, delivered_for: r.delivered_for }]
+        : [];
+    });
+    const lendings: DueLending[] = ((len ?? []) as unknown as LendingRow[]).map((l) => ({
+      lending_id: l.id,
+      title: lendingTitle(l),
+      follow_up_date: l.follow_up_date,
+      delivered_for: l.delivered_for,
+    }));
+
+    const plan = planForUser({ ...s, notifications: { ...s.notifications, ...Object.fromEntries((['email', 'whatsapp', 'sms'] as const).map((c) => [c, channels.includes(c)])) } }, reminders, lendings, now, EARLY_ACCESS);
+    if (!plan) continue;
+    summary.users++;
+
+    let anyOk = plan.messages.length === 0;
+    if (plan.messages.length) {
+      const to = await recipientFor(sb, s);
+      for (const msg of plan.messages) {
+        const res = await messenger.send(msg.channel, to, msg);
+        if (res.ok) {
+          anyOk = true;
+          summary.sent++;
+          await sb.from('notifications').insert({ id: crypto.randomUUID(), user_id: s.user_id, title: msg.subject, body: msg.lines.join('\n'), channel: msg.channel });
+        } else {
+          summary.failed++;
+          console.error(`send ${msg.channel} to ${s.user_id} failed: ${res.error}`);
+        }
+      }
+    }
+    // If every provider failed, leave things unmarked so the next run retries.
+    if (!anyOk) continue;
+    for (const u of plan.reminderUpdates) await sb.from('reminders').update({ delivered_for: u.deliveredFor }).eq('id', u.id);
+    for (const u of plan.lendingUpdates) await sb.from('lendings').update({ delivered_for: u.deliveredFor }).eq('id', u.id);
+    await sb.from('user_settings').update({ last_digest_on: plan.localDate }).eq('user_id', s.user_id);
+  }
+  return summary;
+}
+
+async function runTest(sb: SupabaseClient, userId: string) {
+  const since = new Date(Date.now() - 60_000).toISOString();
+  const { count } = await sb.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('title', 'LifeBox test').gte('created_at', since);
+  if ((count ?? 0) > 0) return { status: 429, body: { error: 'Please wait a minute before sending another test.' } };
+
+  const { data: s } = await sb.from('user_settings').select(SETTINGS_COLS).eq('user_id', userId).maybeSingle();
+  if (!s) return { status: 404, body: { error: 'Save your settings first.' } };
+  const settings = s as SettingsRow;
+  const wanted = enabledChannels(settings, EARLY_ACCESS);
+  if (!wanted.length) return { status: 400, body: { error: 'Turn on email, WhatsApp or SMS first (WhatsApp and SMS need a phone number).' } };
+
+  const to = await recipientFor(sb, settings);
+  const results: Record<string, { ok: boolean; error?: string }> = {};
+  for (const channel of wanted) {
+    if (!messenger.configured(channel)) {
+      results[channel] = { ok: false, error: 'not_configured' };
+      continue;
+    }
+    results[channel] = await messenger.send(channel, to, {
+      channel,
+      subject: 'LifeBox test',
+      lines: ['This is a test reminder. If you can read it, you’re all set.'],
+      text: 'LifeBox test: if you can read this, reminders will reach you here.',
+    });
+  }
+  await sb.from('notifications').insert({ id: crypto.randomUUID(), user_id: userId, title: 'LifeBox test', body: JSON.stringify(results), channel: 'in_app', read_at: new Date().toISOString() });
+  return { status: 200, body: { results } };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+  const sb = admin();
+
+  const cronSecret = env('CRON_SECRET');
+  if (cronSecret && req.headers.get('x-cron-secret') === cronSecret) {
+    try {
+      return json(await runSchedule(sb, new Date()));
+    } catch (e) {
+      console.error(e);
+      return json({ error: 'Schedule run failed' }, 500);
+    }
+  }
+
+  // Otherwise only a signed-in person sending themselves a test.
+  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+  const { data: auth } = token ? await sb.auth.getUser(token) : { data: { user: null } };
+  if (!auth.user) return json({ error: 'Not signed in' }, 401);
+  const body = await req.json().catch(() => ({}));
+  if (body?.test !== true) return json({ error: 'Unsupported request' }, 400);
+  const r = await runTest(sb, auth.user.id);
+  return json(r.body, r.status);
 });

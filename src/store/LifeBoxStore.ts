@@ -16,7 +16,7 @@ import type {
 } from '../types';
 import type { Repository } from '../data/repository';
 import { EMPTY_DATA } from '../data/repository';
-import { buildSeed, defaultSettings } from '../data/seed';
+import { buildSeed, defaultSettings, deviceTimezone } from '../data/seed';
 import { addDays, diffDays, formatDate, nextOccurrenceAfter, todayISO } from '../lib/dates';
 import { capitalizeName, formatMoney, nowStamp, uid } from '../lib/format';
 import { can, limit } from '../lib/plans';
@@ -116,6 +116,11 @@ export class LifeBoxStore {
       }
     }
     this.set(data);
+    // Keep the timezone current (people travel), so server reminders arrive at their local time.
+    const tz = deviceTimezone();
+    if (this.mode === 'supabase' && this.data.settings && this.data.settings.timezone !== tz) {
+      await this.updateSettings({ timezone: tz }).catch(() => {});
+    }
   }
 
   private async persistAll(data: UserData) {

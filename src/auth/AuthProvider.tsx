@@ -29,6 +29,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .getCurrentUser()
       .then(setUser)
       .finally(() => setLoading(false));
+    // Returning from Google, a password-reset link, expiry, or sign-out in another tab.
+    return service.onChange?.((u, event) => {
+      setUser((prev) => (prev?.id === u?.id && event !== 'updated' ? prev : u));
+      setLoading(false);
+      if (event === 'password_recovery' && !location.pathname.startsWith('/reset-password')) location.assign('/reset-password');
+    });
   }, [service]);
 
   const wrap = useCallback(<A extends unknown[]>(fn: (...a: A) => Promise<User>) => async (...a: A) => {

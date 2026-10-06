@@ -139,6 +139,44 @@ create table if not exists public.attachments (
   created_at timestamptz not null default now()
 );
 
+-- ---------- Columns added for email / WhatsApp / SMS delivery ----------
+-- (add column if not exists, so re-running this file upgrades an existing project)
+alter table public.user_settings add column if not exists phone text check (phone ~ '^\+[1-9][0-9]{6,14}$');
+alter table public.user_settings add column if not exists timezone text not null default 'Asia/Kolkata' check (char_length(timezone) <= 64);
+alter table public.user_settings add column if not exists last_digest_on date;
+-- In-app (notified_for) and outside-the-app (delivered_for) deliveries are tracked separately.
+alter table public.reminders add column if not exists delivered_for date;
+alter table public.lendings add column if not exists delivered_for date;
+
+-- People may edit their own settings, but not their plan or the delivery bookkeeping.
+create or replace function public.protect_settings() returns trigger language plpgsql security invoker as $$
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    if tg_op = 'INSERT' then
+      new.plan := 'free';
+      new.last_digest_on := null;
+    else
+      new.plan := old.plan;
+      new.last_digest_on := old.last_digest_on;
+    end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists protect_settings on public.user_settings;
+create trigger protect_settings before insert or update on public.user_settings for each row execute function public.protect_settings();
+
+create or replace function public.protect_delivery() returns trigger language plpgsql security invoker as $$
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    new.delivered_for := case when tg_op = 'INSERT' then null else old.delivered_for end;
+  end if;
+  return new;
+end $$;
+drop trigger if exists protect_delivery on public.reminders;
+create trigger protect_delivery before insert or update on public.reminders for each row execute function public.protect_delivery();
+drop trigger if exists protect_delivery on public.lendings;
+create trigger protect_delivery before insert or update on public.lendings for each row execute function public.protect_delivery();
+
 -- ---------- Row-level security ----------
 alter table public.categories enable row level security;
 drop policy if exists "categories are readable" on public.categories;
@@ -160,17 +198,20 @@ end $$;
 -- Child rows may only point at parents the same user owns.
 create or replace function public.assert_same_owner() returns trigger language plpgsql security invoker as $$
 begin
-  if tg_table_name in ('reminders','recurring_items','attachments') and not exists
-     (select 1 from public.memories m where m.id = new.memory_id and m.user_id = new.user_id) then
-    raise exception 'memory not found';
-  end if;
-  if tg_table_name = 'lendings' and not exists
-     (select 1 from public.people p where p.id = new.person_id and p.user_id = new.user_id) then
-    raise exception 'person not found';
-  end if;
-  if tg_table_name = 'memories' and new.person_id is not null and not exists
-     (select 1 from public.people p where p.id = new.person_id and p.user_id = new.user_id) then
-    raise exception 'person not found';
+  -- Nested IFs on purpose: PL/pgSQL only resolves new.<column> when the statement
+  -- runs, and each table has different columns.
+  if tg_table_name in ('reminders','recurring_items','attachments') then
+    if not exists (select 1 from public.memories m where m.id = new.memory_id and m.user_id = new.user_id) then
+      raise exception 'memory not found';
+    end if;
+  elsif tg_table_name = 'lendings' then
+    if not exists (select 1 from public.people p where p.id = new.person_id and p.user_id = new.user_id) then
+      raise exception 'person not found';
+    end if;
+  elsif tg_table_name = 'memories' then
+    if new.person_id is not null and not exists (select 1 from public.people p where p.id = new.person_id and p.user_id = new.user_id) then
+      raise exception 'person not found';
+    end if;
   end if;
   return new;
 end $$;

@@ -54,3 +54,16 @@ export function capitalizeName(s: string): string {
 export function plural(n: number, word: string, pluralWord = `${word}s`) {
   return `${n} ${n === 1 ? word : pluralWord}`;
 }
+
+/** Accepts "+91 98765 43210", "98765-43210" (assumed India) or "+1 555 000 1111"; returns E.164 or null. */
+export function normalizePhone(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  let digits = trimmed.replace(/[^\d+]/g, '');
+  if (!digits.startsWith('+')) {
+    digits = digits.replace(/^0+/, '');
+    if (/^[6-9]\d{9}$/.test(digits)) digits = `+91${digits}`;
+    else digits = `+${digits}`;
+  }
+  return /^\+[1-9]\d{6,14}$/.test(digits) ? digits : null;
+}

@@ -182,6 +182,10 @@ export interface UserSettings {
   defaultReminderDays: number;
   notifications: NotificationPrefs;
   plan: PlanId;
+  /** E.164 phone number for WhatsApp and SMS reminders, e.g. +919876543210. */
+  phone?: string | null;
+  /** IANA timezone, so outside-the-app reminders arrive at the person's chosen local time. */
+  timezone?: string;
   updatedAt: Timestamp;
 }
 

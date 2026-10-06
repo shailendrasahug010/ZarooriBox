@@ -1,3 +1,4 @@
+import { getSupabase, isSupabaseConfigured } from '../../data/supabase';
 import type { NotificationChannelId } from '../../types';
 
 export interface NotificationPayload {
@@ -8,12 +9,13 @@ export interface NotificationPayload {
   url?: string;
 }
 
-export type ChannelStatus = 'ready' | 'needs_permission' | 'blocked' | 'unsupported' | 'coming_soon';
+/** server: delivered by LifeBox's servers. needs_cloud: needs a cloud (Supabase) account; the local-only version has no server. */
+export type ChannelStatus = 'ready' | 'needs_permission' | 'blocked' | 'unsupported' | 'server' | 'needs_cloud';
 
 /**
- * A delivery channel. Browser notifications run on-device today. Email, WhatsApp
- * and SMS must be sent from a server (see supabase/functions/send-reminders),
- * so in the client they only describe themselves.
+ * A delivery channel. Browser notifications run on-device. Email, WhatsApp and SMS
+ * are sent by the send-reminders server function at each person's chosen time, so
+ * in the client they are preferences plus a "send me a test" call.
  */
 export interface NotificationChannel {
   id: NotificationChannelId;
@@ -60,15 +62,33 @@ const serverChannel = (id: NotificationChannelId, label: string, description: st
   label,
   description,
   pro,
-  status: () => 'coming_soon',
+  status: () => (isSupabaseConfigured ? 'server' : 'needs_cloud'),
   async send() {
     return false;
   },
 });
 
+export type TestResults = Partial<Record<'email' | 'whatsapp' | 'sms', { ok: boolean; error?: string }>>;
+
+/** Asks the server to send a test message on each channel the person switched on. */
+export async function sendServerTest(): Promise<TestResults> {
+  const { data, error } = await getSupabase().functions.invoke('send-reminders', { body: { test: true } });
+  if (error) {
+    let message = 'Could not reach the reminder service.';
+    try {
+      const body = await (error as { context?: Response }).context?.json();
+      if (body?.error) message = body.error;
+    } catch {
+      /* keep the generic message */
+    }
+    throw new Error(message);
+  }
+  return (data?.results ?? {}) as TestResults;
+}
+
 export const CHANNELS: NotificationChannel[] = [
   browserChannel,
-  serverChannel('email', 'Email', 'A short email on the day and before important renewals.'),
+  serverChannel('email', 'Email', 'A short email at your chosen time when something is due.'),
   serverChannel('whatsapp', 'WhatsApp', 'Reminders on WhatsApp, where you already are.', true),
   serverChannel('sms', 'SMS', 'Text messages for the things you really can’t miss.', true),
 ];

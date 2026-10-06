@@ -5,7 +5,8 @@ import { useAuth } from '../auth/AuthProvider';
 import { ConfirmDialog } from '../components/Modal';
 import { useToast } from '../components/Toast';
 import { Field, PageHeader, cx } from '../components/ui';
-import { CHANNELS, browserChannel, type ChannelStatus } from '../lib/notifications/channels';
+import { CHANNELS, browserChannel, sendServerTest, type ChannelStatus } from '../lib/notifications/channels';
+import { normalizePhone } from '../lib/format';
 import { EARLY_ACCESS, PLANS } from '../lib/plans';
 import { useData, useStore } from '../store/DataProvider';
 import type { NotificationPrefs } from '../types';
@@ -46,8 +47,12 @@ const STATUS_TEXT: Record<ChannelStatus, string> = {
   needs_permission: 'Your browser will ask for permission',
   blocked: 'Blocked in browser settings',
   unsupported: 'Not supported in this browser',
-  coming_soon: 'Coming soon',
+  server: 'Sent by LifeBox at your summary time',
+  needs_cloud: 'Available with a LifeBox cloud account',
 };
+
+const CHANNEL_NAMES: Record<string, string> = { email: 'Email', whatsapp: 'WhatsApp', sms: 'SMS' };
+
 
 export default function Settings() {
   const { user, signOut, updateProfile } = useAuth();
@@ -60,6 +65,53 @@ export default function Settings() {
   const [nameError, setNameError] = useState('');
   const [browserStatus, setBrowserStatus] = useState<ChannelStatus>(browserChannel.status());
   const [confirm, setConfirm] = useState<'reset' | 'delete' | null>(null);
+  const [phone, setPhone] = useState(settings.phone ?? '');
+  const [phoneError, setPhoneError] = useState('');
+  const [testing, setTesting] = useState(false);
+  const serverReady = store.mode === 'supabase';
+  const anyServerChannel = serverReady && (settings.notifications.email || settings.notifications.whatsapp || settings.notifications.sms);
+
+  const savePhone = async () => {
+    if (!phone.trim()) {
+      await store.updateSettings({ phone: null, notifications: { ...settings.notifications, whatsapp: false, sms: false } });
+      setPhoneError('');
+      toast.success('Phone number removed');
+      return;
+    }
+    const e164 = normalizePhone(phone);
+    if (!e164) {
+      setPhoneError('Enter a mobile number with country code, like +91 98765 43210.');
+      return;
+    }
+    setPhoneError('');
+    setPhone(e164);
+    await store.updateSettings({ phone: e164 });
+    toast.success('Phone number saved');
+  };
+
+  const sendTest = async () => {
+    setTesting(true);
+    try {
+      const results = await sendServerTest();
+      const ok = Object.entries(results).filter(([, r]) => r?.ok).map(([c]) => CHANNEL_NAMES[c]);
+      const bad = Object.entries(results).filter(([, r]) => !r?.ok).map(([c, r]) => `${CHANNEL_NAMES[c]}${r?.error === 'not_configured' ? ' (not set up on the server yet)' : ''}`);
+      if (ok.length) toast.success(`Test sent by ${ok.join(', ')}`);
+      if (bad.length) toast.error(`Couldn’t send by ${bad.join(', ')}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not send a test.');
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const toggleServer = async (key: 'email' | 'whatsapp' | 'sms', on: boolean) => {
+    if (on && key !== 'email' && !settings.phone) {
+      setPhoneError('Add your mobile number first, then switch this on.');
+      document.getElementById('set-phone')?.focus();
+      return;
+    }
+    await setPref({ [key]: on });
+  };
 
   useEffect(() => {
     if (location.hash) document.querySelector(location.hash)?.scrollIntoView({ behavior: 'smooth' });
@@ -138,22 +190,47 @@ export default function Settings() {
                 <div className="flex-1">
                   <p className="flex flex-wrap items-center gap-2 font-semibold">
                     {c.label}
-                    {status === 'coming_soon' && <span className="rounded-full bg-ink/5 px-2 py-0.5 text-xs font-semibold text-muted">Coming soon</span>}
+                    {status === 'needs_cloud' && <span className="rounded-full bg-ink/5 px-2 py-0.5 text-xs font-semibold text-muted">Cloud account</span>}
                     {c.pro && <span className="inline-flex items-center gap-1 rounded-full bg-soon-bg px-2 py-0.5 text-xs font-semibold text-soon"><Crown className="size-3" aria-hidden="true" /> Pro</span>}
                   </p>
                   <p className="text-sm text-muted">{c.description}</p>
-                  {isBrowser && <p className="mt-0.5 text-xs text-muted">{STATUS_TEXT[status]}</p>}
+                  <p className="mt-0.5 text-xs text-muted">{STATUS_TEXT[status]}</p>
                 </div>
                 <Switch
                   label={c.label}
-                  checked={isBrowser ? settings.notifications.browser && status === 'ready' : false}
-                  disabled={!isBrowser || status === 'unsupported'}
-                  onChange={(v) => (isBrowser ? toggleBrowser(v) : setPref({ [key]: v }))}
+                  checked={isBrowser ? settings.notifications.browser && status === 'ready' : status === 'server' && !!settings.notifications[key]}
+                  disabled={status === 'unsupported' || status === 'needs_cloud'}
+                  onChange={(v) => (isBrowser ? toggleBrowser(v) : toggleServer(key as 'email' | 'whatsapp' | 'sms', v))}
                 />
               </li>
             );
           })}
         </ul>
+        {serverReady && (
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <Field label="Mobile number for WhatsApp and SMS" htmlFor="set-phone" error={phoneError} className="flex-1">
+              <input
+                id="set-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                className="input"
+                placeholder="+91 98765 43210"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                aria-invalid={!!phoneError}
+              />
+            </Field>
+            <button type="button" className="btn btn-secondary" onClick={savePhone} disabled={(normalizePhone(phone) ?? phone.trim()) === (settings.phone ?? '')}>
+              Save number
+            </button>
+          </div>
+        )}
+        {anyServerChannel && (
+          <button type="button" className="btn btn-secondary btn-sm mt-3 mr-2" onClick={sendTest} disabled={testing}>
+            {testing ? 'Sending…' : 'Send me a test message'}
+          </button>
+        )}
         {settings.notifications.browser && browserStatus === 'ready' && (
           <button
             type="button"
@@ -167,12 +244,13 @@ export default function Settings() {
           <div className="flex items-center gap-4 sm:col-span-2">
             <div className="flex-1">
               <p className="font-semibold">Morning summary</p>
-              <p className="text-sm text-muted">One calm message with everything due that day.</p>
+              <p className="text-sm text-muted">One calm message with everything due that day, instead of one per item.</p>
+              {serverReady && settings.timezone && <p className="mt-0.5 text-xs text-muted">Times are in your timezone ({settings.timezone}).</p>}
             </div>
             <Switch label="Morning summary" checked={settings.notifications.dailyDigest} onChange={(v) => setPref({ dailyDigest: v })} />
           </div>
-          <Field label="Summary time" htmlFor="set-digest">
-            <input id="set-digest" type="time" className="input" value={settings.notifications.digestTime} onChange={(e) => setPref({ digestTime: e.target.value })} disabled={!settings.notifications.dailyDigest} />
+          <Field label="Send reminders at" htmlFor="set-digest">
+            <input id="set-digest" type="time" className="input" value={settings.notifications.digestTime} onChange={(e) => setPref({ digestTime: e.target.value })} />
           </Field>
           <Field label="Default reminder for new items" htmlFor="set-reminder">
             <select
