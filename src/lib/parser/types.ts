@@ -28,6 +28,8 @@ export interface ParsedQuickAdd {
   // Shopping
   shoppingItems?: ParsedShoppingItem[];
   confidence: 'high' | 'medium' | 'low';
+  /** Set to 'ai' when the AI parser produced this result. */
+  source?: 'ai' | 'rules';
 }
 
 export interface ParseContext {

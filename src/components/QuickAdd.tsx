@@ -1,7 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CornerDownLeft, SlidersHorizontal, Sparkles } from 'lucide-react';
-import { parseQuickAdd, quickAddParser, type ParsedQuickAdd } from '../lib/parser';
+import { ArrowRight, CornerDownLeft, Mic, SlidersHorizontal, Sparkles, Square } from 'lucide-react';
+import { aiQuickAddEnabled, parseQuickAdd, quickAddParser, type ParsedQuickAdd } from '../lib/parser';
+import { VOICE_ERROR_TEXT, getVoiceInput, type VoiceSession } from '../lib/voice';
 import { getCategory } from '../lib/categories';
 import { describeRepeat, formatDate, relativeLabel, todayISO } from '../lib/dates';
 import { formatMoney } from '../lib/format';
@@ -35,7 +36,7 @@ function Chip({ label, value }: { label: string; value: string }) {
 }
 
 /** What the parser understood, shown live while typing. */
-function Preview({ p }: { p: ParsedQuickAdd }) {
+function Preview({ p, ai }: { p: ParsedQuickAdd; ai?: boolean }) {
   const chips: [string, string][] = [];
   if (p.kind === 'shopping') {
     chips.push(['List', p.shoppingItems?.[0]?.listCategory ?? 'Grocery']);
@@ -61,6 +62,11 @@ function Preview({ p }: { p: ParsedQuickAdd }) {
       <p className="mb-2 flex items-center gap-2 text-[0.95rem] font-bold text-ink">
         <span aria-hidden="true">{icon}</span>
         <span className="truncate">{p.kind === 'shopping' ? 'Add to shopping list' : p.title}</span>
+        {ai && (
+          <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700" title="Understood by AI">
+            <Sparkles className="size-3" aria-hidden="true" /> AI
+          </span>
+        )}
       </p>
       <div className="flex flex-wrap gap-1.5">
         {chips.map(([l, v], i) => (
@@ -82,6 +88,13 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
   const [exampleIdx, setExampleIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const hintId = useId();
+  // AI result for the exact text currently typed, fetched after typing pauses.
+  const [aiPreview, setAiPreview] = useState<{ text: string; parsed: ParsedQuickAdd } | null>(null);
+  const voice = useMemo(() => getVoiceInput(), []);
+  const [listening, setListening] = useState(false);
+  const voiceRef = useRef<VoiceSession | null>(null);
+
+  useEffect(() => () => voiceRef.current?.stop(), []);
 
   useEffect(() => {
     if (text) return;
@@ -89,14 +102,57 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
     return () => window.clearInterval(t);
   }, [text]);
 
-  const preview = useMemo(
+  const rulePreview = useMemo(
     () => (text.trim().length >= 3 ? parseQuickAdd(text, { today: todayISO(), currency: store.settings.currency }) : null),
     [text, store],
   );
+  const aiMatches = !!aiPreview && aiPreview.text === text.trim();
+  const preview = aiMatches ? aiPreview.parsed : rulePreview;
+
+  useEffect(() => {
+    const value = text.trim();
+    if (!aiQuickAddEnabled || listening || value.length < 6 || value.length > 300) return;
+    let cancelled = false;
+    const t = window.setTimeout(async () => {
+      const parsed = aiMatches ? aiPreview!.parsed : await quickAddParser.parse(value, { today: todayISO(), currency: store.settings.currency });
+      if (!cancelled && parsed.source === 'ai') setAiPreview({ text: value, parsed });
+    }, 900);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [text, listening, store]);
+
+  const toggleVoice = async () => {
+    if (listening) {
+      voiceRef.current?.stop();
+      return;
+    }
+    const before = text;
+    setListening(true);
+    const session = await voice.start({
+      onPartial: (heard) => setText(heard),
+      onEnd: (heard) => {
+        voiceRef.current = null;
+        setListening(false);
+        setText(heard || before);
+        inputRef.current?.focus();
+      },
+      onError: (err) => {
+        voiceRef.current = null;
+        setListening(false);
+        setText(before);
+        toast.error(VOICE_ERROR_TEXT[err]);
+      },
+    });
+    if (session) voiceRef.current = session;
+    else setListening(false);
+  };
 
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
     const value = text.trim();
+    if (listening) voiceRef.current?.stop();
     if (!value || busy) {
       inputRef.current?.focus();
       return;
@@ -107,9 +163,10 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
     }
     setBusy(true);
     try {
-      const parsed = await quickAddParser.parse(value, { today: todayISO(), currency: store.settings.currency });
+      const parsed = aiMatches ? aiPreview!.parsed : await quickAddParser.parse(value, { today: todayISO(), currency: store.settings.currency });
       const res = await store.applyQuickAdd(parsed);
       setText('');
+      setAiPreview(null);
       setFlash(true);
       window.setTimeout(() => setFlash(false), 900);
       const undo =
@@ -169,12 +226,29 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
           enterKeyHint="done"
           aria-describedby={hintId}
           maxLength={300}
-          placeholder={`Try “${EXAMPLES[exampleIdx]}”`}
+          placeholder={listening ? 'Listening… say what you want to remember' : `Try “${EXAMPLES[exampleIdx]}”`}
           className={cx(
             'min-w-0 flex-1 bg-transparent font-medium text-ink outline-none placeholder:font-normal placeholder:text-muted/80',
             hero ? 'min-h-12 text-[1.05rem] sm:text-lg' : 'min-h-11 text-base',
           )}
         />
+        {voice.isSupported() && (
+          <button
+            type="button"
+            onClick={toggleVoice}
+            aria-pressed={listening}
+            aria-label={listening ? 'Stop listening' : 'Add by voice'}
+            title={listening ? 'Stop listening' : 'Add by voice'}
+            className={cx(
+              'relative grid shrink-0 place-items-center rounded-xl transition',
+              hero ? 'size-11' : 'size-10',
+              listening ? 'bg-attn text-white' : 'bg-paper text-ink-soft hover:bg-brand-50 hover:text-brand-700',
+            )}
+          >
+            {listening && <span className="absolute inset-0 animate-ping rounded-xl bg-attn/40" aria-hidden="true" />}
+            {listening ? <Square className="relative size-4 fill-current" /> : <Mic className="size-5" />}
+          </button>
+        )}
         <button type="submit" className={cx('btn btn-primary shrink-0', !hero && 'btn-sm')} disabled={busy} aria-label="Add">
           <span className="hidden sm:inline">Add</span>
           <ArrowRight className="size-4 sm:hidden" />
@@ -182,13 +256,13 @@ export function QuickAdd({ variant = 'hero', autoFocus = false }: { variant?: 'h
         </button>
       </div>
       <p id={hintId} className="sr-only">
-        Type a sentence like “Car insurance expires 12 February 2027”. LifeBox works out the date, category and reminder. Press Enter to save.
+        Type or say a sentence like “Car insurance expires 12 February 2027”. LifeBox works out the date, category and reminder. Press Enter to save.
       </p>
       {preview && (
         <>
-          <Preview p={preview} />
+          <Preview p={preview} ai={aiMatches} />
           <div className="mt-2 flex items-center justify-between gap-2 px-1">
-            <span className="text-xs text-muted">Press Enter to save</span>
+            <span className="text-xs text-muted">{listening ? 'Listening… tap ■ when you’re done' : 'Press Enter or tap Add to save'}</span>
             <button type="button" onClick={openDetails} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">
               <SlidersHorizontal className="size-4" aria-hidden="true" />
               Add details

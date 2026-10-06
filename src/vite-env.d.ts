@@ -3,4 +3,5 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;
   readonly VITE_AI_PARSER_URL?: string;
+  readonly VITE_AI_QUICK_ADD?: string;
 }
