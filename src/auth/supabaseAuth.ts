@@ -50,7 +50,8 @@ export function createSupabaseAuth(): AuthService {
       if (err) throw new AuthError(err);
       const { data, error } = await sb.auth.signUp({ email, password, options: { data: { name } } });
       fail(error);
-      if (!data.user) throw new AuthError('Check your email to confirm your account.');
+      // With email confirmation on, Supabase creates the account but no session yet.
+      if (!data.user || !data.session) throw new AuthError(`Almost there! We sent a link to ${email}. Open it to confirm your account, then log in.`);
       return toUser(data.user);
     },
     async signIn(email, password) {
@@ -73,6 +74,7 @@ export function createSupabaseAuth(): AuthService {
     async signInDemo() {
       // Anonymous sign-in must be enabled in Supabase Auth settings.
       const { data, error } = await sb.auth.signInAnonymously({ options: { data: { name: 'Demo' } } });
+      if (error && /anonymous/i.test(error.message)) throw new AuthError('The demo isn’t switched on for this LifeBox yet. Sign up instead, it’s free.');
       fail(error);
       return toUser(data.user!);
     },

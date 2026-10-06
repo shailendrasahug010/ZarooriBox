@@ -7,7 +7,8 @@
 // - A signed-in person can POST { "test": true } from Settings to get a test message
 //   on each channel they switched on.
 //
-// Secrets: CRON_SECRET, plus the provider keys listed in _shared/messaging.ts.
+// Secrets: the provider keys listed in _shared/messaging.ts. The scheduler's secret
+// is generated in Vault by cron.sql (or set CRON_SECRET to use your own).
 // SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase.
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
@@ -166,13 +167,21 @@ async function runTest(sb: SupabaseClient, userId: string) {
   return { status: 200, body: { results } };
 }
 
+/** The scheduler proves itself with a secret kept in Vault (see cron.sql), or CRON_SECRET if set. */
+async function isScheduler(sb: SupabaseClient, secret: string | null): Promise<boolean> {
+  if (!secret) return false;
+  const fromEnv = env('CRON_SECRET');
+  if (fromEnv) return secret === fromEnv;
+  const { data } = await sb.rpc('check_cron_secret', { secret });
+  return data === true;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   const sb = admin();
 
-  const cronSecret = env('CRON_SECRET');
-  if (cronSecret && req.headers.get('x-cron-secret') === cronSecret) {
+  if (await isScheduler(sb, req.headers.get('x-cron-secret'))) {
     try {
       return json(await runSchedule(sb, new Date()));
     } catch (e) {

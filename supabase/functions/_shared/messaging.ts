@@ -32,12 +32,12 @@ const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', 
 
 export function emailHtml(to: Recipient, msg: PlannedMessage, appUrl: string): string {
   const items = msg.lines.map((l) => `<li style="margin:6px 0">${escapeHtml(l)}</li>`).join('');
-  return `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:auto;color:#1f2937">
+  return `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:auto;color:#1c1917">
   <p style="font-size:16px">Hi ${escapeHtml(to.name || 'there')},</p>
   <p style="font-size:16px">Here’s what needs your attention:</p>
   <ul style="font-size:16px;padding-left:20px">${items}</ul>
-  <p><a href="${escapeHtml(appUrl)}/app" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:600">Open LifeBox</a></p>
-  <p style="font-size:12px;color:#6b7280">You get this because email reminders are on in LifeBox settings.</p>
+  <p><a href="${escapeHtml(appUrl)}/app" style="display:inline-block;background:#17745D;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:600">Open LifeBox</a></p>
+  <p style="font-size:12px;color:#78716c">You get this because email reminders are on in LifeBox settings.</p>
 </div>`;
 }
 

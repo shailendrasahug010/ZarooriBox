@@ -191,7 +191,7 @@ begin
     execute format('alter table public.%I force row level security', t);
     execute format('drop policy if exists "owner only" on public.%I', t);
     execute format(
-      'create policy "owner only" on public.%I for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
+      'create policy "owner only" on public.%I for all to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()))', t);
   end loop;
 end $$;
 
@@ -230,5 +230,21 @@ end $$;
 insert into storage.buckets (id, name, public) values ('attachments', 'attachments', false) on conflict (id) do nothing;
 drop policy if exists "own attachment files" on storage.objects;
 create policy "own attachment files" on storage.objects for all to authenticated
-  using (bucket_id = 'attachments' and (storage.foldername(name))[1] = auth.uid()::text)
-  with check (bucket_id = 'attachments' and (storage.foldername(name))[1] = auth.uid()::text);
+  using (bucket_id = 'attachments' and (storage.foldername(name))[1] = (select auth.uid())::text)
+  with check (bucket_id = 'attachments' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- ---------- Indexes on foreign keys (RLS filters and joins) ----------
+create index if not exists reminders_memory on public.reminders (memory_id);
+create index if not exists reminders_user on public.reminders (user_id);
+create index if not exists lendings_user on public.lendings (user_id);
+create index if not exists lendings_person on public.lendings (person_id);
+create index if not exists people_user on public.people (user_id);
+create index if not exists recurring_user on public.recurring_items (user_id);
+create index if not exists shopping_user on public.shopping_items (user_id);
+create index if not exists notifications_user on public.notifications (user_id);
+create index if not exists notifications_memory on public.notifications (memory_id);
+create index if not exists notifications_lending on public.notifications (lending_id);
+create index if not exists attachments_user on public.attachments (user_id);
+create index if not exists attachments_memory on public.attachments (memory_id);
+create index if not exists memories_person on public.memories (person_id);
+create index if not exists memories_category on public.memories (category_id);

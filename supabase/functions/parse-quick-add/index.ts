@@ -6,7 +6,9 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders, json } from '../_shared/cors.ts';
 import { parseWithClaude } from '../_shared/quickAddAI.ts';
 
-const anthropic = new Anthropic(); // reads ANTHROPIC_API_KEY
+// Created on first use, so the function still answers (with a rules fallback)
+// before ANTHROPIC_API_KEY has been set.
+let anthropic: Anthropic | null = null;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -31,6 +33,8 @@ Deno.serve(async (req) => {
   const currency = typeof body.currency === 'string' && /^[A-Z]{3}$/.test(body.currency) ? body.currency : 'INR';
   if (!text || text.length > 300) return json({ error: 'Text must be 1-300 characters' }, 400);
 
+  if (!Deno.env.get('ANTHROPIC_API_KEY')) return json({ fallback: true, reason: 'ai_not_configured' });
+  anthropic ??= new Anthropic();
   try {
     const parsed = await parseWithClaude(anthropic, { text, today, currency });
     return parsed ? json(parsed) : json({ fallback: true });

@@ -17,7 +17,7 @@ npm run dev          # http://localhost:5173
 
 Open the site, then click **Try the demo with sample data** (on the landing page or the login screen) to explore a fully populated account, or **Start Free** to create your own (empty) account.
 
-With no configuration, LifeBox runs entirely in your browser: accounts and data are stored in `localStorage` on that device. Nothing is sent anywhere.
+`npm run dev` and `npm run build` use the live LifeBox Supabase project (settings in `.env.production`, which holds only the public URL and publishable key). To run LifeBox entirely in your browser instead, with accounts and data kept in `localStorage` on that device, use `npm run build:local` or delete `.env.production`.
 
 Other commands:
 
@@ -25,16 +25,19 @@ Other commands:
 npm run build        # type-check + production build into dist/
 npm run preview      # serve the production build on :4173
 npm test             # unit tests (parser, AI validation, store, auth, notifications)
-npm run e2e          # browser walkthrough of every core flow (needs `npm run preview` running
-                     # and Chromium; set CHROME_PATH if it isn't at /opt/pw-browsers)
+npm run build:local  # same, but with browser-only storage (no Supabase)
+npm run e2e          # browser walkthrough of every core flow (run `npm run build:local` and
+                     # `npm run preview` first; needs Chromium, set CHROME_PATH if it isn't at /opt/pw-browsers)
 ```
 
-## Switch to Supabase (real accounts, sync across devices)
+## Supabase (real accounts, sync across devices)
+
+LifeBox is already connected to its Supabase project (`usuityljxclilfljwvvd`, Mumbai): the schema, row-level security, storage bucket, both edge functions and the 15-minute reminder schedule are live. To set up your own project instead:
 
 1. Create a Supabase project.
 2. In the SQL editor, run [`supabase/schema.sql`](supabase/schema.sql). It creates every table, row-level security on each one, ownership triggers and a private storage bucket for attachments. It is safe to run again after updates.
 3. In **Authentication → Providers**, enable Email, and optionally **Anonymous sign-ins** (for the demo button).
-4. Copy `.env.example` to `.env.local` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+4. Put your project's values in `.env.production` (or `.env.local`): `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 5. `npm run dev`. Auth and data now go through Supabase. No code changes.
 
 ### Continue with Google
@@ -67,11 +70,11 @@ The `send-reminders` function sends each person what's due at the time they pick
 
 ```bash
 supabase functions deploy send-reminders --no-verify-jwt   # it checks callers itself
-supabase secrets set CRON_SECRET=$(openssl rand -hex 24) LIFEBOX_APP_URL=https://your-site
+supabase secrets set LIFEBOX_APP_URL=https://your-site
 supabase secrets set RESEND_API_KEY=... RESEND_FROM="LifeBox <reminders@yourdomain.com>"
 ```
 
-Then run [`supabase/cron.sql`](supabase/cron.sql) (fill in your project ref and the same `CRON_SECRET`) to call it every 15 minutes. In the app, **Settings → Notifications** now has live switches, a mobile number field and **Send me a test message**. WhatsApp and SMS are Pro channels; set `LIFEBOX_EARLY_ACCESS=false` when you start charging.
+Then run [`supabase/cron.sql`](supabase/cron.sql) (fill in your project ref) to call it every 15 minutes. It creates its own secret in Supabase Vault, so there is nothing to copy around. In the app, **Settings → Notifications** now has live switches, a mobile number field and **Send me a test message**. WhatsApp and SMS are Pro channels; set `LIFEBOX_EARLY_ACCESS=false` when you start charging.
 
 ## Phone app (Android and iPhone)
 
@@ -81,9 +84,9 @@ The `android/` and `ios/` folders are [Capacitor](https://capacitorjs.com) proje
 - **Reminders while the app is closed**: alerts are scheduled with the phone at your chosen time.
 - Google sign-in through the system browser, the Android back button, splash screen and app icon.
 
-Without Supabase settings, the phone app keeps everything on the phone. With them (see `.env.local`), it uses the same account as the website.
+The phone app uses the same Supabase account as the website (it is built with `.env.production`). Build with `npm run build:local` instead to keep everything on the phone.
 
-**Get an Android APK without installing anything:** every push to `main` builds one in GitHub Actions (**Actions → Android app → latest run → Artifacts → lifebox-android-debug**). Unzip it, copy `app-debug.apk` to your phone and open it (allow "install unknown apps"). Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as repository secrets to build it against your Supabase project.
+**Get an Android APK without installing anything:** every push to `main` builds one in GitHub Actions (**Actions → Android app → latest run → Artifacts → lifebox-android-debug**). Unzip it, copy `app-debug.apk` to your phone and open it (allow "install unknown apps"). It connects to the LifeBox Supabase project automatically.
 
 **Build it yourself:**
 
