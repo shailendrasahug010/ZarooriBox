@@ -149,7 +149,7 @@ alter table public.reminders add column if not exists delivered_for date;
 alter table public.lendings add column if not exists delivered_for date;
 
 -- People may edit their own settings, but not their plan or the delivery bookkeeping.
-create or replace function public.protect_settings() returns trigger language plpgsql security invoker as $$
+create or replace function public.protect_settings() returns trigger language plpgsql security invoker set search_path = '' as $$
 begin
   if coalesce(auth.role(), '') <> 'service_role' then
     if tg_op = 'INSERT' then
@@ -165,7 +165,7 @@ end $$;
 drop trigger if exists protect_settings on public.user_settings;
 create trigger protect_settings before insert or update on public.user_settings for each row execute function public.protect_settings();
 
-create or replace function public.protect_delivery() returns trigger language plpgsql security invoker as $$
+create or replace function public.protect_delivery() returns trigger language plpgsql security invoker set search_path = '' as $$
 begin
   if coalesce(auth.role(), '') <> 'service_role' then
     new.delivered_for := case when tg_op = 'INSERT' then null else old.delivered_for end;
@@ -196,7 +196,7 @@ begin
 end $$;
 
 -- Child rows may only point at parents the same user owns.
-create or replace function public.assert_same_owner() returns trigger language plpgsql security invoker as $$
+create or replace function public.assert_same_owner() returns trigger language plpgsql security invoker set search_path = '' as $$
 begin
   -- Nested IFs on purpose: PL/pgSQL only resolves new.<column> when the statement
   -- runs, and each table has different columns.
