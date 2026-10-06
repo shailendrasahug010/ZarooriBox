@@ -22,6 +22,7 @@ jobs:
         with:
           deno-version: v2.x
       - name: Server functions (type check + tests)
+        working-directory: supabase/functions
         run: |
-          deno check --node-modules-dir=auto supabase/functions/*/index.ts
-          deno test --node-modules-dir=auto --allow-env supabase/functions/_shared/
+          deno check */index.ts
+          deno test --allow-env _shared/
