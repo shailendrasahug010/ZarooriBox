@@ -276,6 +276,95 @@ await step('A second user sees none of the first user’s data', async () => {
 });
 await ctx.close();
 
+
+// Voice: a stand-in for the browser's speech recognizer, so the test can "speak".
+await step('Voice Quick Add: mic fills the box while speaking, then saves', async () => {
+  const v = await newPage({ width: 390, height: 844 }, true);
+  const p = v.page;
+  await v.ctx.addInitScript(() => {
+    class FakeRecognition {
+      constructor() { window.__rec = this; }
+      start() { setTimeout(() => this.onresult?.({ results: [{ isFinal: false, 0: { transcript: 'Car insurance expires' } }] }), 50); }
+      stop() {
+        this.onresult?.({ results: [{ isFinal: true, 0: { transcript: 'Car insurance expires on 12 February 2027' } }] });
+        setTimeout(() => this.onend?.(), 20);
+      }
+      abort() {}
+    }
+    window.SpeechRecognition = window.webkitSpeechRecognition = FakeRecognition;
+  });
+  await p.goto(`${BASE}/login`);
+  await p.getByRole('button', { name: /Try the demo/ }).click();
+  await p.waitForURL('**/app');
+  const mic = p.getByRole('button', { name: 'Add by voice' });
+  await mic.click();
+  await p.getByRole('button', { name: 'Stop listening' }).waitFor();
+  await p.waitForFunction(() => document.querySelector('#quick-add-input')?.value === 'Car insurance expires');
+  expect((await p.getAttribute('#quick-add-input', 'placeholder')).startsWith('Listening'), 'listening placeholder');
+  await p.getByRole('button', { name: 'Stop listening' }).click();
+  await p.waitForFunction(() => document.querySelector('#quick-add-input')?.value === 'Car insurance expires on 12 February 2027', null, { timeout: 3000 }).catch(async () => {
+    throw new Error(`after stop the box holds "${await p.inputValue('#quick-add-input')}"`);
+  });
+  await p.getByText('12 Feb 2027').first().waitFor();
+  await p.getByRole('button', { name: 'Add by voice' }).waitFor();
+  await p.getByRole('button', { name: 'Add', exact: true }).click();
+  await p.getByText(/Added|Saved|remind/i).first().waitFor();
+  expect((await p.inputValue('#quick-add-input')) === '', 'cleared after save');
+  await v.ctx.close();
+});
+
+await step('Voice: microphone blocked shows a clear message', async () => {
+  const v = await newPage();
+  const p = v.page;
+  await v.ctx.addInitScript(() => {
+    window.SpeechRecognition = window.webkitSpeechRecognition = class {
+      start() { setTimeout(() => { this.onerror?.({ error: 'not-allowed' }); this.onend?.(); }, 20); }
+      stop() {}
+      abort() {}
+    };
+  });
+  await p.goto(`${BASE}/login`);
+  await p.getByRole('button', { name: /Try the demo/ }).click();
+  await p.waitForURL('**/app');
+  await p.getByRole('button', { name: 'Add by voice' }).click();
+  await p.getByText('Allow microphone access to add things by voice.').waitFor();
+  await v.ctx.close();
+});
+
+await step('No mic button where the browser has no speech recognition', async () => {
+  const v = await newPage();
+  const p = v.page;
+  await v.ctx.addInitScript(() => {
+    delete window.webkitSpeechRecognition;
+    delete window.SpeechRecognition;
+  });
+  await p.goto(`${BASE}/login`);
+  await p.getByRole('button', { name: /Try the demo/ }).click();
+  await p.waitForURL('**/app');
+  await p.locator('#quick-add-input').waitFor();
+  expect((await p.getByRole('button', { name: 'Add by voice' }).count()) === 0, 'mic hidden');
+  await v.ctx.close();
+});
+
+await step('Installable: manifest, icons and offline service worker', async () => {
+  const v = await newPage();
+  const p = v.page;
+  await p.goto(`${BASE}/`);
+  const manifestHref = await p.getAttribute('link[rel="manifest"]', 'href');
+  const manifest = await (await p.request.get(`${BASE}${manifestHref}`)).json();
+  expect(manifest.display === 'standalone' && manifest.start_url === '/app', 'manifest basics');
+  for (const icon of manifest.icons) expect((await p.request.get(`${BASE}${icon.src}`)).ok(), `icon ${icon.src}`);
+  const scope = await p.evaluate(async () => (await navigator.serviceWorker.ready).scope);
+  expect(scope === `${BASE}/`, 'service worker active');
+  await p.reload();
+  await p.waitForFunction(() => !!navigator.serviceWorker.controller);
+  await v.ctx.setOffline(true);
+  await p.goto(`${BASE}/app`);
+  await p.locator('#root *').first().waitFor();
+  await v.ctx.setOffline(false);
+  await v.ctx.close();
+});
+
 // Mobile
 const m = await newPage({ width: 390, height: 844 }, true);
 await step('Mobile: demo login, bottom nav, no horizontal scroll', async () => {

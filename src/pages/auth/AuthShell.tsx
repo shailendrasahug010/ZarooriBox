@@ -10,7 +10,7 @@ const FLOATING = [
 
 export function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle?: string; children: ReactNode; footer?: ReactNode }) {
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[1.05fr_1fr]">
+    <div className="grid min-h-dvh pt-[env(safe-area-inset-top)] lg:grid-cols-[1.05fr_1fr]">
       <aside className="relative hidden overflow-hidden bg-brand-700 p-12 text-white lg:flex lg:flex-col" aria-hidden="true">
         <Link to="/" className="inline-flex rounded-xl">
           <span className="rounded-xl bg-white/95 px-3 py-2">

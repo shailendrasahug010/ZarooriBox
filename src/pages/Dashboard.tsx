@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 import { MemoryRow } from '../components/MemoryRow';
@@ -35,6 +35,8 @@ export default function Dashboard() {
   const store = useStore();
   const toast = useToast();
   const { openLendingForm } = useUI();
+  // Home-screen shortcut "Quick add" opens /app?add=1.
+  const [params] = useSearchParams();
 
   const today = dueToday(memories);
   const soon = comingSoon(memories).slice(0, 5);
@@ -64,7 +66,7 @@ export default function Dashboard() {
       </header>
 
       <div className="animate-fade-up" style={{ animationDelay: '60ms' }}>
-        <QuickAdd />
+        <QuickAdd autoFocus={params.get('add') === '1'} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">

@@ -1,5 +1,6 @@
 import { getSupabase, isSupabaseConfigured } from '../../data/supabase';
 import type { NotificationChannelId } from '../../types';
+import { isNativeApp, nativeChannel } from './native';
 
 export interface NotificationPayload {
   title: string;
@@ -86,8 +87,11 @@ export async function sendServerTest(): Promise<TestResults> {
   return (data?.results ?? {}) as TestResults;
 }
 
+/** Pop-ups on this device: OS-scheduled in the phone app, browser notifications on the web. */
+export const deviceChannel: NotificationChannel = isNativeApp() ? nativeChannel : browserChannel;
+
 export const CHANNELS: NotificationChannel[] = [
-  browserChannel,
+  deviceChannel,
   serverChannel('email', 'Email', 'A short email at your chosen time when something is due.'),
   serverChannel('whatsapp', 'WhatsApp', 'Reminders on WhatsApp, where you already are.', true),
   serverChannel('sms', 'SMS', 'Text messages for the things you really can’t miss.', true),

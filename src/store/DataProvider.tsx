@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { createRepository } from '../data';
-import { browserChannel } from '../lib/notifications/channels';
+import { deviceChannel } from '../lib/notifications/channels';
+import { isNativeApp, syncNativeSchedule } from '../lib/notifications/native';
 import { buildLendingViews, buildMemoryViews } from '../lib/selectors';
 import type { UserData } from '../types';
 import { LifeBoxStore } from './LifeBoxStore';
@@ -34,11 +35,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const check = async () => {
       try {
         const fired = await store.runReminderCheck();
-        if (!fired.length || !store.settings.notifications.browser) return;
+        // The phone app schedules its alerts with the OS (below), so no duplicate pop-up here.
+        if (!fired.length || !store.settings.notifications.browser || isNativeApp()) return;
         if (fired.length === 1) {
-          await browserChannel.send({ title: fired[0].title, body: fired[0].body, tag: `lifebox-${fired[0].dueDate}`, url: '/app' });
+          await deviceChannel.send({ title: fired[0].title, body: fired[0].body, tag: `lifebox-${fired[0].dueDate}`, url: '/app' });
         } else {
-          await browserChannel.send({ title: `LifeBox: ${fired.length} things need you`, body: fired.slice(0, 3).map((f) => f.title).join(', '), tag: 'lifebox-digest', url: '/app' });
+          await deviceChannel.send({ title: `LifeBox: ${fired.length} things need you`, body: fired.slice(0, 3).map((f) => f.title).join(', '), tag: 'lifebox-digest', url: '/app' });
         }
       } catch {
         // A failed check retries on the next tick.
@@ -47,6 +49,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
     check();
     const t = window.setInterval(check, CHECK_EVERY_MS);
     return () => window.clearInterval(t);
+  }, [store]);
+
+  // Phone app: keep the OS notification schedule in step with the data.
+  useEffect(() => {
+    if (!store || !isNativeApp()) return;
+    let t: number | undefined;
+    const sync = () => {
+      window.clearTimeout(t);
+      t = window.setTimeout(() => void syncNativeSchedule(store.getSnapshot(), store.settings).catch(() => {}), 1500);
+    };
+    sync();
+    const unsubscribe = store.subscribe(sync);
+    return () => {
+      window.clearTimeout(t);
+      unsubscribe();
+    };
   }, [store]);
 
   if (error) {

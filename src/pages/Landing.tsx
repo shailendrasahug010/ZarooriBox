@@ -119,7 +119,7 @@ export default function Landing() {
       <a href="#content" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-ink focus:px-4 focus:py-2 focus:text-white">
         Skip to content
       </a>
-      <header className="sticky top-0 z-30 border-b border-line/60 bg-paper/85 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-line/60 bg-paper/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
         <nav className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:px-6" aria-label="Main">
           <Link to="/" aria-label="LifeBox home">
             <Logo />

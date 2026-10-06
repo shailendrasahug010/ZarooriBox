@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthProvider';
@@ -70,7 +71,8 @@ export default function App() {
       <ToastProvider>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Landing />} />
+            {/* The phone app skips the marketing page. */}
+            <Route path="/" element={Capacitor.isNativePlatform() ? <Navigate to="/app" replace /> : <Landing />} />
             <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
             <Route path="/signup" element={<GuestOnly><Signup /></GuestOnly>} />
             <Route path="/forgot-password" element={<ForgotPassword />} />

@@ -5,7 +5,8 @@ import { useAuth } from '../auth/AuthProvider';
 import { ConfirmDialog } from '../components/Modal';
 import { useToast } from '../components/Toast';
 import { Field, PageHeader, cx } from '../components/ui';
-import { CHANNELS, browserChannel, sendServerTest, type ChannelStatus } from '../lib/notifications/channels';
+import { CHANNELS, deviceChannel, sendServerTest, type ChannelStatus } from '../lib/notifications/channels';
+import { isNativeApp, refreshNativeStatus } from '../lib/notifications/native';
 import { normalizePhone } from '../lib/format';
 import { EARLY_ACCESS, PLANS } from '../lib/plans';
 import { useData, useStore } from '../store/DataProvider';
@@ -63,7 +64,7 @@ export default function Settings() {
   const settings = data.settings ?? store.settings;
   const [name, setName] = useState(user?.name ?? '');
   const [nameError, setNameError] = useState('');
-  const [browserStatus, setBrowserStatus] = useState<ChannelStatus>(browserChannel.status());
+  const [browserStatus, setBrowserStatus] = useState<ChannelStatus>(deviceChannel.status());
   const [confirm, setConfirm] = useState<'reset' | 'delete' | null>(null);
   const [phone, setPhone] = useState(settings.phone ?? '');
   const [phoneError, setPhoneError] = useState('');
@@ -114,6 +115,10 @@ export default function Settings() {
   };
 
   useEffect(() => {
+    if (isNativeApp()) void refreshNativeStatus().then(setBrowserStatus);
+  }, []);
+
+  useEffect(() => {
     if (location.hash) document.querySelector(location.hash)?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
@@ -127,15 +132,21 @@ export default function Settings() {
 
   const toggleBrowser = async (on: boolean) => {
     if (on && browserStatus !== 'ready') {
-      const s = (await browserChannel.requestAccess?.()) ?? 'unsupported';
+      const s = (await deviceChannel.requestAccess?.()) ?? 'unsupported';
       setBrowserStatus(s);
       if (s !== 'ready') {
-        toast.error(s === 'blocked' ? 'Notifications are blocked. Allow them in your browser’s site settings.' : 'Notifications aren’t available here.');
+        toast.error(
+          s === 'blocked'
+            ? isNativeApp()
+              ? 'Notifications are off for LifeBox. Turn them on in your phone’s settings.'
+              : 'Notifications are blocked. Allow them in your browser’s site settings.'
+            : 'Notifications aren’t available here.',
+        );
         return;
       }
     }
     await setPref({ browser: on });
-    if (on) toast.success('Browser notifications on');
+    if (on) toast.success(isNativeApp() ? 'Phone notifications on' : 'Browser notifications on');
   };
 
   const saveName = async () => {
@@ -235,7 +246,7 @@ export default function Settings() {
           <button
             type="button"
             className="btn btn-secondary btn-sm mt-2"
-            onClick={() => browserChannel.send({ title: 'LifeBox test 👋', body: 'Notifications are working on this device.' })}
+            onClick={() => deviceChannel.send({ title: 'LifeBox test 👋', body: 'Notifications are working on this device.' })}
           >
             Send a test notification
           </button>

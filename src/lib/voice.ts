@@ -1,5 +1,5 @@
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
-import { SpeechRecognition as NativeSpeech } from '@capacitor-community/speech-recognition';
+import { SpeechRecognition as NativeSpeech } from '@capgo/capacitor-speech-recognition';
 
 // Voice input for Quick Add. In the phone app it uses the operating system's speech
 // recognizer (Android / iOS) through a Capacitor plugin; in browsers it uses the Web
@@ -147,14 +147,14 @@ export const nativeVoice: VoiceInput = {
     };
     handles.push(
       await NativeSpeech.addListener('partialResults', (d) => {
-        text = (d.matches?.[0] ?? text).trim();
+        text = (d.accumulatedText ?? d.matches?.[0] ?? text).trim();
         h.onPartial(text);
       }),
       await NativeSpeech.addListener('listeningState', (d) => {
-        if (d.status === 'stopped') finish();
+        if (d.status === 'stopped' || d.state === 'stopped') finish();
       }),
     );
-    NativeSpeech.start({ language: lang, partialResults: true, popup: false, maxResults: 1 })
+    NativeSpeech.start({ language: lang, partialResults: true, popup: false, maxResults: 1, addPunctuation: false })
       .then((r) => {
         // Some devices return the final words here instead of via partialResults.
         if (r?.matches?.[0]) text = r.matches[0].trim();

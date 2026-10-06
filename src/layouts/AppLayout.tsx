@@ -130,7 +130,7 @@ export function AppLayout() {
 
       <div className="lg:pl-[16.5rem]">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 border-b border-line/60 bg-paper/85 backdrop-blur-md">
+        <header className="sticky top-0 z-20 border-b border-line/60 bg-paper/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
           <div className="mx-auto flex h-16 max-w-5xl items-center gap-2 px-4 sm:px-6">
             <Link to="/app" className="lg:hidden" aria-label="LifeBox home">
               <Logo />
