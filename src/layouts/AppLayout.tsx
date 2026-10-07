@@ -24,6 +24,7 @@ import { useData } from '../store/DataProvider';
 import { EARLY_ACCESS } from '../lib/plans';
 import { registerNavigator } from '../lib/appNavigation';
 import { useT, type MessageKey } from '../i18n';
+import { NotificationPrompt } from '../components/NotificationPrompt';
 
 type Icon = ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
 
@@ -179,6 +180,7 @@ export function AppLayout() {
           </div>
         </header>
 
+        {!path.startsWith('/app/welcome') && <NotificationPrompt />}
         <main id="main" className="mx-auto max-w-5xl px-4 pb-32 pt-5 sm:px-6 lg:pb-12 lg:pt-7" tabIndex={-1}>
           <div key={path} className="animate-fade-in">
             <Outlet />

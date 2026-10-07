@@ -159,6 +159,29 @@ export const nativeChannel: NotificationChannel = {
   },
 };
 
+/** A test alert a few seconds from now, so it can be seen popping up over another app. */
+export async function scheduleTestNotification(seconds = 5) {
+  await ensureAlertChannel();
+  await LocalNotifications.schedule({
+    notifications: [
+      {
+        id: notificationId(`test:${Date.now()}`),
+        title: 'ZarooriBox test 👋',
+        body: 'Reminders are working on this phone.',
+        channelId: ALERT_CHANNEL,
+        schedule: { at: new Date(Date.now() + seconds * 1000), allowWhileIdle: true },
+      },
+    ],
+  });
+}
+
+/** Android 12+: whether "Alarms & reminders" is allowed, so alerts fire at the exact minute. */
+export async function exactAlarmsAllowed(): Promise<boolean | null> {
+  if (Capacitor.getPlatform() !== 'android') return null;
+  const r = await LocalNotifications.checkExactNotificationSetting().catch(() => null);
+  return r ? r.exact_alarm === 'granted' : null;
+}
+
 /** Reads the real permission state once at startup (the plugin call is async). */
 export async function refreshNativeStatus(): Promise<ChannelStatus> {
   if (!isNativeApp()) return cachedStatus;

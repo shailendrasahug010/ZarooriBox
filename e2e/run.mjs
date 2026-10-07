@@ -29,6 +29,8 @@ async function newPage(viewport = { width: 1280, height: 900 }, mobile = false) 
 }
 
 const { ctx, page } = await newPage();
+// The main walk-through has notifications allowed, so the start-up prompt stays away.
+await ctx.grantPermissions(['notifications'], { origin: BASE });
 const email = `meera${Date.now()}@example.com`;
 const quickAdd = async (text) => {
   await page.fill('#quick-add-input', text);
@@ -223,6 +225,8 @@ await step('Expiry Radar lists expiring item', async () => {
 await step('Notification settings page', async () => {
   await page.goto(`${BASE}/app/settings#notifications`);
   await page.getByRole('switch', { name: 'Browser notifications' }).waitFor();
+  // Allowed in the browser, so alerts were switched on when the app opened.
+  expect(await page.getByRole('switch', { name: 'Browser notifications' }).isChecked(), 'alerts switched on at start');
   await page.getByRole('switch', { name: 'WhatsApp' }).waitFor();
   expect(await page.getByRole('switch', { name: 'WhatsApp' }).isDisabled(), 'WhatsApp is coming soon');
 });
@@ -513,6 +517,23 @@ await step('Public action page without a valid link says so', async () => {
   await v.page.waitForTimeout(500);
   expect(!(await v.page.url()).includes('/login'), 'stays public');
   await v.ctx.close();
+});
+
+await step('Opening the app asks to turn on reminders; Not now is remembered', async () => {
+  const f = await newPage();
+  await f.page.goto(`${BASE}/signup`);
+  await f.page.fill('#su-name', 'Asha');
+  await f.page.fill('#su-email', `asha${Date.now()}@example.com`);
+  await f.page.fill('#su-password', 'ashapass1');
+  await f.page.getByRole('button', { name: 'Create account' }).click();
+  await f.page.waitForURL('**/app/welcome');
+  await f.page.goto(`${BASE}/app/upcoming`);
+  await f.page.getByRole('heading', { name: /Turn on reminders/ }).waitFor();
+  await f.page.getByRole('button', { name: 'Not now' }).click();
+  await f.page.reload();
+  await f.page.waitForTimeout(1500);
+  expect((await f.page.getByRole('heading', { name: /Turn on reminders/ }).count()) === 0, 'asked again right after Not now');
+  await f.ctx.close();
 });
 
 // Mobile
