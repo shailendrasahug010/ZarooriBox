@@ -172,14 +172,14 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
         </p>
       </aside>
 
-      <main className="relative flex flex-col px-5 pb-8 pt-7 sm:px-10 lg:py-10">
+      <main className="relative flex flex-col px-5 pb-8 pt-5 sm:px-10 sm:pt-7 lg:py-10">
         <div className="m-auto w-full max-w-sm">
           <img
             src="/logo.png"
             alt="ZarooriBox: Everything important, in one place."
             width={600}
             height={557}
-            className="mx-auto mb-6 h-auto w-44 animate-pop drop-shadow-[0_12px_24px_rgb(29_111_242/0.18)] sm:w-48"
+            className="mx-auto mb-4 h-auto w-36 animate-pop drop-shadow-[0_12px_24px_rgb(29_111_242/0.18)] sm:mb-6 sm:w-48"
             draggable={false}
           />
           <div className="animate-fade-up" style={{ animationDelay: '120ms' }}>
