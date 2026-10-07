@@ -32,3 +32,12 @@ jobs:
         with:
           name: zaroori-android-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+      # TEMPORARY: check the release signing path with a throwaway key.
+      - name: Release signing check
+        working-directory: android
+        run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/t.jks" -alias upload -keyalg RSA -keysize 2048 -validity 2 -storepass testpass1 -keypass testpass1 -dname "CN=Test"
+          ZAROORI_UPLOAD_KEYSTORE="$RUNNER_TEMP/t.jks" ZAROORI_UPLOAD_STORE_PASSWORD=testpass1 ZAROORI_UPLOAD_KEY_ALIAS=upload ZAROORI_UPLOAD_KEY_PASSWORD=testpass1 ./gradlew bundleRelease assembleRelease --no-daemon
+          ls -la app/build/outputs/bundle/release app/build/outputs/apk/release
+          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk | head -3
+          jarsigner -verify app/build/outputs/bundle/release/app-release.aab | tail -1
