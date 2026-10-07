@@ -199,3 +199,28 @@ export function occurrencesBetween(
   }
   return out;
 }
+
+/** "09:30" -> "9:30 am". */
+export function formatTime(hhmm: string): string {
+  const m = /^(\d{2}):(\d{2})$/.exec(hhmm);
+  if (!m) return hhmm;
+  const h = Number(m[1]);
+  return `${h % 12 || 12}:${m[2]} ${h < 12 ? 'am' : 'pm'}`;
+}
+
+/** "9:00 am, 9:00 pm", or '' when there are none. */
+export function formatTimes(times?: string[] | null): string {
+  return (times ?? []).map(formatTime).join(', ');
+}
+
+/** Dates an item with times happens on, from today (or its due date) up to the horizon. */
+export function timedDates(due: ISODate, repeat: Pick<RepeatSpec, 'interval' | 'unit'> | null, today: ISODate, until: ISODate): ISODate[] {
+  if (!repeat) return due >= today && due <= until ? [due] : [];
+  const out: ISODate[] = [];
+  let d = due;
+  for (let i = 0; i < 400 && d <= until; i++) {
+    if (d >= today) out.push(d);
+    d = addUnit(d, Math.max(1, repeat.interval), repeat.unit);
+  }
+  return out;
+}

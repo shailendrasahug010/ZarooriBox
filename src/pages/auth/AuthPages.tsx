@@ -56,28 +56,23 @@ function Alternatives() {
   const [busy, setBusy] = useState(false);
   return (
     <>
-      <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-muted" aria-hidden="true">
+      <div className="my-4 flex items-center gap-3 text-xs lg:my-6 font-semibold uppercase tracking-wider text-muted" aria-hidden="true">
         <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
       </div>
       <FormError message={error} />
-      <div className="space-y-2.5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-1 sm:gap-2.5">
         <button
           type="button"
-          className="btn btn-secondary w-full"
+          className="btn btn-secondary w-full px-3"
           disabled={!service.supportsGoogle}
           aria-describedby={!service.supportsGoogle ? 'google-note' : undefined}
           onClick={() => signInWithGoogle().catch((e: Error) => setError(e.message))}
         >
-          <GoogleIcon /> Continue with Google
+          <GoogleIcon /> <span className="sm:hidden">Google</span><span className="hidden sm:inline">Continue with Google</span>
         </button>
-        {!service.supportsGoogle && (
-          <p id="google-note" className="text-center text-xs text-muted">
-            Google sign-in turns on when ZarooriBox is connected to its cloud backend.
-          </p>
-        )}
         <button
           type="button"
-          className="btn w-full bg-brand-50 text-brand-800 hover:bg-brand-100"
+          className="btn w-full bg-brand-50 px-3 text-brand-800 hover:bg-brand-100"
           disabled={busy}
           onClick={async () => {
             setBusy(true);
@@ -90,9 +85,14 @@ function Alternatives() {
             }
           }}
         >
-          <Sparkles className="size-4" aria-hidden="true" /> {busy ? 'Opening demo…' : 'Try the demo with sample data'}
+          <Sparkles className="size-4" aria-hidden="true" /> {busy ? 'Opening demo…' : <>Try the demo<span className="hidden sm:inline">&nbsp;with sample data</span></>}
         </button>
       </div>
+      {!service.supportsGoogle && (
+        <p id="google-note" className="mt-2 text-center text-xs text-muted">
+          Google sign-in turns on when ZarooriBox is connected to its cloud backend.
+        </p>
+      )}
     </>
   );
 }
@@ -133,7 +133,7 @@ export function Login() {
         </>
       }
     >
-      <form onSubmit={submit} noValidate className="space-y-4">
+      <form onSubmit={submit} noValidate className="space-y-3 lg:space-y-4">
         <FormError message={errors.form ?? ''} />
         <Field label="Email" htmlFor="login-email" error={errors.email}>
           <input
@@ -150,7 +150,7 @@ export function Login() {
         <Field label="Password" htmlFor="login-password" error={errors.password}>
           <PasswordInput id="login-password" value={password} onChange={setPassword} error={errors.password} autoComplete="current-password" />
         </Field>
-        <div className="flex justify-end">
+        <div className="-mt-1 flex justify-end">
           <Link to="/forgot-password" className="text-sm font-semibold text-brand-700 hover:underline">
             Forgot password?
           </Link>
@@ -205,7 +205,7 @@ export function Signup() {
         </>
       }
     >
-      <form onSubmit={submit} noValidate className="space-y-4">
+      <form onSubmit={submit} noValidate className="space-y-3 lg:space-y-4">
         <FormError message={errors.form ?? ''} />
         <Field label="Your name" htmlFor="su-name" error={errors.name}>
           <input id="su-name" className="input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="given-name" maxLength={60} aria-invalid={!!errors.name} />

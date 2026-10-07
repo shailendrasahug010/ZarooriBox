@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { navigateTo } from '../appNavigation';
 import { formatMoney } from '../format';
+import { addDays, formatTime, timedDates, toISO } from '../dates';
 import { t } from '../../i18n';
 import type { ISODate, UserData, UserSettings } from '../../types';
 import type { ChannelStatus, NotificationChannel } from './channels';
@@ -20,7 +21,14 @@ export interface PlannedLocalNotification {
   at: Date;
   /** What the Done / Tomorrow buttons on the notification act on. */
   target: { kind: 'memory' | 'lending'; id: string };
+  /** 'reminder': a heads-up at the daily reminder time. 'timed': at a time set on the item (a dose, a meeting). */
+  type: 'reminder' | 'timed';
 }
+
+/** Repeating items with times (daily medicines) are scheduled this many days ahead. */
+const TIMED_REPEAT_DAYS = 7;
+
+export { timedDates };
 
 /** Buttons shown on every ZarooriBox reminder notification. */
 export const ACTION_TYPE = 'zaroori-reminder';
@@ -56,7 +64,33 @@ export function planLocalNotifications(data: UserData, settings: UserSettings, n
     if (!m || m.status !== 'active' || !m.dueDate) continue;
     const at = atLocal(r.remindOn, time);
     if (at <= now || at > horizon) continue;
-    out.push({ id: notificationId(`r:${r.id}:${m.dueDate}:${r.remindOn}`), title: m.title, body: whenText(m.dueDate, r.remindOn), at, target: { kind: 'memory', id: m.id } });
+    out.push({ id: notificationId(`r:${r.id}:${m.dueDate}:${r.remindOn}`), title: m.title, body: whenText(m.dueDate, r.remindOn), at, target: { kind: 'memory', id: m.id }, type: 'reminder' });
+  }
+  // Items with times of day: an alert at each time (every dose of a daily medicine, a meeting at 4 pm).
+  const today = toISO(now);
+  const recurrences = new Map(data.recurrences.map((r) => [r.memoryId, r]));
+  for (const m of data.memories) {
+    if (m.status !== 'active' || !m.dueDate || !m.dueTimes?.length) continue;
+    const rec = recurrences.get(m.id) ?? null;
+    const until = rec ? addDays(today, TIMED_REPEAT_DAYS) : toISO(horizon);
+    const medicine = m.categoryId === 'health' && m.subcategory === 'Medicines';
+    // Ticking off this morning's dose rolls a daily medicine to tomorrow; tonight's dose still counts.
+    const doneToday = !!m.lastCompletedAt && toISO(new Date(m.lastCompletedAt)) === today;
+    const start = rec && doneToday && m.dueDate > today ? today : m.dueDate;
+    for (const d of timedDates(start, rec, today, until)) {
+      for (const tm of m.dueTimes) {
+        const at = atLocal(d, tm);
+        if (at <= now || at > horizon) continue;
+        out.push({
+          id: notificationId(`t:${m.id}:${d}:${tm}`),
+          title: medicine ? `💊 Time for ${m.title}` : m.title,
+          body: medicine ? `Your ${formatTime(tm)} dose` : `At ${formatTime(tm)}${m.location ? ` · ${m.location}` : ''}`,
+          at,
+          target: { kind: 'memory', id: m.id },
+          type: 'timed',
+        });
+      }
+    }
   }
   for (const l of data.lendings) {
     if (l.status !== 'open' || !l.followUpDate) continue;
@@ -71,7 +105,7 @@ export function planLocalNotifications(data: UserData, settings: UserSettings, n
         : l.direction === 'lent'
           ? `${who} has your ${l.itemName ?? 'item'}`
           : `Return the ${l.itemName ?? 'item'} to ${who}`;
-    out.push({ id: notificationId(`l:${l.id}:${l.followUpDate}`), title: 'Time to follow up', body: what, at, target: { kind: 'lending', id: l.id } });
+    out.push({ id: notificationId(`l:${l.id}:${l.followUpDate}`), title: 'Time to follow up', body: what, at, target: { kind: 'lending', id: l.id }, type: 'reminder' });
   }
   return out.sort((a, b) => a.at.getTime() - b.at.getTime()).slice(0, MAX_SCHEDULED);
 }

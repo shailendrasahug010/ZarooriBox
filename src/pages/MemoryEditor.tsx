@@ -6,8 +6,8 @@ import { MemoryForm } from '../components/MemoryForm';
 import { QuickAdd } from '../components/QuickAdd';
 import { useToast } from '../components/Toast';
 import { EmptyState, PageHeader } from '../components/ui';
-import { REPEAT_PRESETS, formatDate } from '../lib/dates';
-import { MEMORY_CATEGORIES } from '../lib/categories';
+import { REPEAT_PRESETS, formatDate, todayISO } from '../lib/dates';
+import { MEMORY_CATEGORIES, getCategory } from '../lib/categories';
 import type { ParsedQuickAdd } from '../lib/parser';
 import type { MemoryView } from '../lib/selectors';
 import { useStore, useViews } from '../store/DataProvider';
@@ -29,12 +29,24 @@ function blank(categoryId: CategoryId = 'personal', defaultReminder = 1): Memory
   };
 }
 
+/** Sensible starting points for the Add screen's ?category=…&type=… links. */
+function blankFor(categoryId: CategoryId, sub: string | null, defaultReminder: number): MemoryInput {
+  const b = blank(categoryId, defaultReminder);
+  const type = sub && getCategory(categoryId).subcategories.includes(sub) ? sub : '';
+  if (categoryId === 'health' && type === 'Medicines') {
+    // A medicine: every day from today, with a first dose time to adjust.
+    return { ...b, subcategory: type, dueDate: todayISO(), times: ['09:00'], repeat: { ...REPEAT_PRESETS.daily }, reminder: { mode: 'offset', offsetDays: 0 } };
+  }
+  return { ...b, subcategory: type };
+}
+
 function fromParsed(p: ParsedQuickAdd, defaultReminder: number): MemoryInput {
   return {
     ...blank(p.categoryId === 'people' || p.categoryId === 'shopping' ? 'personal' : p.categoryId, defaultReminder),
     title: p.title,
     subcategory: p.subcategory ?? '',
     dueDate: p.dueDate,
+    times: p.times,
     reminder: p.dueDate ? { mode: 'offset', offsetDays: p.reminderDaysBefore ?? defaultReminder } : { mode: 'none' },
     repeat: p.repeat,
     amount: p.amount,
@@ -50,6 +62,7 @@ function fromView(m: MemoryView): MemoryInput {
     categoryId: m.categoryId,
     subcategory: m.subcategory ?? '',
     dueDate: m.dueDate ?? null,
+    times: m.dueTimes ?? [],
     reminder: !r ? { mode: 'none' } : r.offsetDays != null && m.dueDate ? { mode: 'offset', offsetDays: r.offsetDays } : { mode: 'date', date: r.remindOn },
     repeat: m.recurrence ? { frequency: m.recurrence.frequency, interval: m.recurrence.interval, unit: m.recurrence.unit } : { ...REPEAT_PRESETS.never },
     status: m.status,
@@ -126,7 +139,7 @@ export function AddMemory() {
   const defaultReminder = store.settings.defaultReminderDays;
   const base = parsed
     ? fromParsed(parsed, defaultReminder)
-    : blank(catParam && MEMORY_CATEGORIES.some((c) => c.id === catParam) ? catParam : 'personal', defaultReminder);
+    : blankFor(catParam && MEMORY_CATEGORIES.some((c) => c.id === catParam) ? catParam : 'personal', params.get('type'), defaultReminder);
   const { errors, saving, run } = useSave();
 
   // Document scanning: a photo from the camera button, the Add page or Share to ZarooriBox.

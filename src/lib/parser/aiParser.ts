@@ -10,7 +10,7 @@ import type { ParseContext, ParsedQuickAdd, ParsedShoppingItem, QuickAddParser }
 
 export type AiTransport = (body: { text: string; today: string; currency: string }) => Promise<unknown>;
 
-const CATEGORIES: CategoryId[] = ['personal', 'home', 'finance', 'shopping', 'people', 'vehicle', 'documents'];
+const CATEGORIES: CategoryId[] = ['personal', 'home', 'finance', 'shopping', 'people', 'vehicle', 'documents', 'health', 'bookings'];
 const FREQUENCIES: RepeatFrequency[] = ['never', 'daily', 'weekly', 'monthly', 'quarterly', 'half_yearly', 'yearly', 'custom'];
 const UNITS: RepeatUnit[] = ['day', 'week', 'month', 'year'];
 const LISTS = ['Grocery', 'Home', 'Personal care', 'Wishlist', 'Other'];
@@ -43,6 +43,11 @@ export function normalizeParsed(data: unknown, fallback: ParsedQuickAdd): Parsed
 
   const out: ParsedQuickAdd = { ...fallback, kind, title, categoryId, confidence: 'high', source: 'ai' };
   out.subcategory = str(data.subcategory, 40) ?? undefined;
+  // Medicines and bookings are newer than the AI's category list: keep the rules' pick for them.
+  if (kind === 'memory' && (fallback.categoryId === 'health' || fallback.categoryId === 'bookings') && categoryId !== fallback.categoryId) {
+    out.categoryId = fallback.categoryId;
+    out.subcategory = fallback.subcategory;
+  }
   if ('dueDate' in data) out.dueDate = isoDate(data.dueDate);
   if ('reminderDaysBefore' in data) out.reminderDaysBefore = int(data.reminderDaysBefore, 0, 365);
   if ('amount' in data) out.amount = typeof data.amount === 'number' && Number.isFinite(data.amount) && data.amount >= 0 && data.amount < 1e12 ? data.amount : null;

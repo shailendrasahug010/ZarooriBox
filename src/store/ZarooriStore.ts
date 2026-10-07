@@ -24,8 +24,8 @@ import { capitalizeName, formatMoney, nowStamp, uid } from '../lib/format';
 import { can, limit } from '../lib/plans';
 import { t } from '../i18n';
 import type { ParsedQuickAdd } from '../lib/parser';
-import { collectDueReminders, toNotification, type DueReminder } from '../lib/notifications/scheduler';
-import { hasErrors, validateLending, validateMemory, type LendingInput, type MemoryInput } from './memoryInput';
+import { collectDueReminders, collectTimedAlerts, toNotification, type DueReminder } from '../lib/notifications/scheduler';
+import { hasErrors, normalizeTimes, validateLending, validateMemory, type LendingInput, type MemoryInput } from './memoryInput';
 
 export class ValidationError extends Error {
   constructor(public fields: Record<string, string | undefined>) {
@@ -61,6 +61,23 @@ function readSeen(uid: ID): Record<string, string> {
     return JSON.parse(globalThis.localStorage?.getItem(SEEN_KEY(uid)) ?? '{}') as Record<string, string>;
   } catch {
     return {};
+  }
+}
+/** Device-only record of timed alerts (doses, meetings) already shown today. */
+const TIMED_KEY = (uid: ID) => `zaroori:v1:timed-seen:${uid}`;
+function readTimedSeen(uid: ID, today: string): Set<string> {
+  try {
+    const keys = JSON.parse(globalThis.localStorage?.getItem(TIMED_KEY(uid)) ?? '[]') as string[];
+    return new Set(keys.filter((k) => k.includes(`:${today}:`)));
+  } catch {
+    return new Set();
+  }
+}
+function writeTimedSeen(uid: ID, keys: Set<string>) {
+  try {
+    globalThis.localStorage?.setItem(TIMED_KEY(uid), JSON.stringify([...keys]));
+  } catch {
+    /* best effort */
   }
 }
 function writeSeen(uid: ID, seen: Record<string, string>) {
@@ -123,7 +140,7 @@ export class ZarooriStore {
     }
   }
 
-  private get uid() {
+  get uid() {
     return this.user.id;
   }
 
@@ -298,6 +315,7 @@ export class ZarooriStore {
       categoryId: input.categoryId,
       subcategory: clean(input.subcategory),
       dueDate: input.dueDate || null,
+      dueTimes: input.dueDate ? normalizeTimes(input.times) : null,
       status: input.status,
       amount: input.amount ?? null,
       currency: this.settings.currency,
@@ -352,6 +370,7 @@ export class ZarooriStore {
       categoryId: input.categoryId,
       subcategory: clean(input.subcategory) ?? '',
       dueDate: input.dueDate || null,
+      dueTimes: input.dueDate ? normalizeTimes(input.times) : null,
       status: input.status,
       amount: input.amount ?? null,
       personId,
@@ -663,6 +682,7 @@ export class ZarooriStore {
       categoryId: p.categoryId === 'shopping' || p.categoryId === 'people' ? 'personal' : p.categoryId,
       subcategory: p.subcategory,
       dueDate: p.dueDate,
+      times: p.times,
       reminder: p.dueDate && p.reminderDaysBefore != null ? { mode: 'offset', offsetDays: p.reminderDaysBefore } : { mode: 'none' },
       repeat: p.repeat,
       status: 'active',
@@ -678,7 +698,14 @@ export class ZarooriStore {
   async runReminderCheck(today = todayISO()): Promise<DueReminder[]> {
     const seen = readSeen(this.uid);
     const isOthers = (d: DueReminder) => !!d.reminder && d.reminder.userId !== this.uid;
-    const due = collectDueReminders(this.data, today).filter((d) => !isOthers(d) || seen[d.reminder!.id] !== d.dueDate);
+    const now = new Date();
+    const timedSeen = readTimedSeen(this.uid, todayISO());
+    const timed = collectTimedAlerts(this.data, now, timedSeen);
+    if (timed.length) {
+      for (const t of timed) timedSeen.add(t.key);
+      writeTimedSeen(this.uid, timedSeen);
+    }
+    const due = [...timed.map(({ key: _key, ...d }) => d), ...collectDueReminders(this.data, today).filter((d) => !isOthers(d) || seen[d.reminder!.id] !== d.dueDate)];
     if (!due.length) return [];
     const notes = due.map((d) => toNotification(d, this.uid, uid('ntf')));
     // Someone else's shared reminder: remember on this device instead of writing their row.

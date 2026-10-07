@@ -3,7 +3,7 @@ import { AlarmClock, Check, Repeat, Users } from 'lucide-react';
 import { useT } from '../i18n';
 import { useStore } from '../store/DataProvider';
 import { getCategory } from '../lib/categories';
-import { formatDate } from '../lib/dates';
+import { formatDate, formatTimes } from '../lib/dates';
 import { formatMoney } from '../lib/format';
 import type { MemoryView } from '../lib/selectors';
 import { useUI } from './UIProvider';
@@ -54,7 +54,7 @@ export function CompleteButton({ done, onComplete, label }: { done?: boolean; on
 
 export function memoryMeta(m: MemoryView): string {
   const parts = [m.subcategory || getCategory(m.categoryId).name];
-  if (m.dueDate) parts.push(formatDate(m.dueDate));
+  if (m.dueDate) parts.push(m.dueTimes?.length ? `${formatDate(m.dueDate)}, ${formatTimes(m.dueTimes)}` : formatDate(m.dueDate));
   if (m.amount) parts.push(formatMoney(m.amount, m.currency));
   return parts.join(' · ');
 }

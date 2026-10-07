@@ -15,6 +15,8 @@ export interface ParsedQuickAdd {
   categoryId: CategoryId;
   subcategory?: string;
   dueDate: ISODate | null;
+  /** Times of day (HH:mm, sorted) to alert on the due date, e.g. "at 9pm" or "twice a day". */
+  times?: string[];
   reminderDaysBefore: number | null;
   repeat: RepeatSpec;
   amount: number | null;

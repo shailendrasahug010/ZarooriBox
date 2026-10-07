@@ -1,6 +1,7 @@
 import type { Attachment, ISODate, Lending, Memory, Person, RecurringItem, Reminder, UserData } from '../types';
 import { EXPIRY_SUBCATEGORIES } from './categories';
 import { daysFromToday, todayISO } from './dates';
+import { isMedicine } from './medicines';
 
 export type Urgency = 'attention' | 'soon' | 'ok' | 'none';
 
@@ -82,17 +83,22 @@ export function buildLendingViews(data: UserData): LendingView[] {
 }
 
 const byDue = (a: MemoryView, b: MemoryView) =>
-  (a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31') || a.title.localeCompare(b.title);
+  (a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31') ||
+  (a.dueTimes?.[0] ?? '99:99').localeCompare(b.dueTimes?.[0] ?? '99:99') ||
+  a.title.localeCompare(b.title);
 
 export const active = (v: MemoryView[]) => v.filter((m) => m.status === 'active');
 
+/** Medicines with dose times live in their own "Medicines today" block, not in due lists. */
+const scheduledMedicine = (m: MemoryView) => isMedicine(m) && !!m.dueTimes?.length && !!m.recurrence;
+
 export function dueToday(views: MemoryView[]) {
-  return active(views).filter((m) => m.daysLeft != null && m.daysLeft <= 0).sort(byDue);
+  return active(views).filter((m) => m.daysLeft != null && m.daysLeft <= 0 && !scheduledMedicine(m)).sort(byDue);
 }
 
 export function comingSoon(views: MemoryView[], window = SOON_WINDOW) {
   return active(views)
-    .filter((m) => m.daysLeft != null && m.daysLeft > 0 && m.daysLeft <= window)
+    .filter((m) => m.daysLeft != null && m.daysLeft > 0 && m.daysLeft <= window && !scheduledMedicine(m))
     .sort(byDue);
 }
 

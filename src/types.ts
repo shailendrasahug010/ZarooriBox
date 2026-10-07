@@ -14,7 +14,9 @@ export type CategoryId =
   | 'shopping'
   | 'people'
   | 'vehicle'
-  | 'documents';
+  | 'documents'
+  | 'health'
+  | 'bookings';
 
 export interface Category {
   id: CategoryId;
@@ -63,6 +65,8 @@ export interface Memory {
   categoryId: CategoryId;
   subcategory?: string;
   dueDate?: ISODate | null;
+  /** Times of day (HH:mm, sorted) to alert on the due date: medicine doses, a meeting, an appointment. */
+  dueTimes?: string[] | null;
   status: MemoryStatus;
   amount?: number | null;
   currency: string;

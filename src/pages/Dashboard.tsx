@@ -7,7 +7,9 @@ import { QuickAdd } from '../components/QuickAdd';
 import { useToast } from '../components/Toast';
 import { useUI } from '../components/UIProvider';
 import { EmptyState, SectionCard, StatusDot, cx } from '../components/ui';
-import { formatDate, formatLongToday, now, relativeLabel } from '../lib/dates';
+import { formatDate, formatLongToday, now, relativeLabel, todayISO } from '../lib/dates';
+import { dosesOn } from '../lib/medicines';
+import { DoseList } from '../components/DoseList';
 import { formatMoney, plural } from '../lib/format';
 import { active, comingSoon, dueToday, expiringSoon, overallStatus, recentlyAdded, sortByDue, type LendingView } from '../lib/selectors';
 import { useStore, useViews } from '../store/DataProvider';
@@ -42,6 +44,7 @@ export function lendingTitle(l: LendingView) {
 export default function Dashboard() {
   const { user } = useAuth();
   const { data, memories, lendings } = useViews();
+  const doseCount = dosesOn(data.memories, data.recurrences, todayISO()).length;
   const store = useStore();
   const toast = useToast();
   const { openLendingForm } = useUI();
@@ -132,6 +135,23 @@ export default function Dashboard() {
             </ul>
           ) : (
             <EmptyState emoji="🌤️" title={t('dash.empty.soon.title')} body={t('dash.empty.soon.body')} />
+          )}
+        </SectionCard>
+
+        <SectionCard title={t('dash.medicines')} emoji="💊" count={doseCount} to="/app/medicines" delay={160}>
+          {doseCount ? (
+            <DoseList limit={5} />
+          ) : (
+            <EmptyState
+              emoji="💊"
+              title={t('dash.empty.meds.title')}
+              body={t('dash.empty.meds.body')}
+              action={
+                <Link to="/app/add?category=health&type=Medicines" className="btn btn-secondary btn-sm">
+                  {t('dash.addMedicine')}
+                </Link>
+              }
+            />
           )}
         </SectionCard>
 
