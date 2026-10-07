@@ -19,32 +19,27 @@ const FEATURES = [
 
 const WORDS = ['bills', 'renewals', 'birthdays', 'warranties', 'services', 'things you lent'];
 
-/** The LifeBox logo whose lid lifts now and then, letting a few sparks out. */
-export function AnimatedLogo({ size = 'size-11', light = false }: { size?: string; light?: boolean }) {
+/** The LifeBox logo: the box bobs gently while a few sparks fly out of it. */
+export function AnimatedLogo({ size = 'size-12', light = false }: { size?: string; light?: boolean }) {
   return (
     <span className="inline-flex items-center gap-3">
-      <span className={`relative ${size} shrink-0`}>
-        <svg viewBox="0 0 64 64" className="size-full overflow-visible" aria-hidden="true">
-          <rect x="4" y="4" width="56" height="56" rx="17" fill={light ? '#fff' : '#17745D'} />
-          <path d="M18 27h28v18a5 5 0 0 1-5 5H23a5 5 0 0 1-5-5V27z" fill={light ? '#17745D' : '#fff'} />
-          <g className="animate-lid" style={{ transformOrigin: '15px 27px', transformBox: 'view-box' }}>
-            <path d="M15 21a4 4 0 0 1 4-4h26a4 4 0 0 1 4 4v6H15v-6z" fill="#BFE6D8" />
-          </g>
-          <circle cx="32" cy="37" r="4" fill={light ? '#BFE6D8' : '#17745D'} />
-        </svg>
+      <span className={`relative ${size} shrink-0 ${light ? 'rounded-2xl bg-white p-0.5 shadow-lift' : ''}`}>
+        <img src="/logo-mark.png" alt="" className="size-full object-contain animate-float [animation-duration:3.5s]" draggable={false} />
         {[
-          { l: '30%', sx: '-10px', sy: '-16px', d: '0.55s', c: 'bg-amber-300' },
-          { l: '50%', sx: '2px', sy: '-20px', d: '0.65s', c: 'bg-white' },
-          { l: '68%', sx: '12px', sy: '-14px', d: '0.6s', c: 'bg-brand-200' },
+          { l: '22%', sx: '-12px', sy: '-16px', d: '0s', c: 'bg-amber-300' },
+          { l: '50%', sx: '2px', sy: '-22px', d: '0.35s', c: 'bg-pink-400' },
+          { l: '76%', sx: '13px', sy: '-15px', d: '0.7s', c: 'bg-sky-300' },
         ].map((p) => (
           <span
             key={p.l}
-            className={`absolute top-1 size-1.5 rounded-full opacity-0 animate-sparkle ${p.c}`}
+            className={`absolute top-0 size-1.5 rounded-full opacity-0 animate-sparkle ${p.c}`}
             style={{ left: p.l, animationDelay: p.d, '--sx': p.sx, '--sy': p.sy } as CSSProperties}
           />
         ))}
       </span>
-      <span className={`text-[1.35rem] font-extrabold tracking-tight ${light ? 'text-white' : 'text-ink'}`}>LifeBox</span>
+      <span className={`text-[1.4rem] font-extrabold tracking-tight ${light ? 'text-white' : 'text-ink'}`}>
+        Life<span className={light ? 'text-sky-200' : 'text-blue-600'}>Box</span>
+      </span>
     </span>
   );
 }
@@ -112,7 +107,7 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
         <Blobs />
         <div className="relative px-5">
           <Link to="/" aria-label="LifeBox home" className="inline-flex rounded-xl animate-fade-up">
-            <AnimatedLogo light size="size-10" />
+            <AnimatedLogo light size="size-12" />
           </Link>
           <p className="mt-4 text-[1.6rem] font-extrabold leading-tight tracking-tight animate-fade-up" style={{ animationDelay: '80ms' }}>
             Everything you don’t want to forget.

@@ -10,16 +10,16 @@ export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(' ');
 }
 
-export function Logo({ className = '', withText = true }: { className?: string; withText?: boolean }) {
+/** The LifeBox mark (an open box with life's things popping out) and name. */
+export function Logo({ className = '', withText = true, light = false }: { className?: string; withText?: boolean; light?: boolean }) {
   return (
-    <span className={cx('inline-flex items-center gap-2.5', className)}>
-      <svg viewBox="0 0 64 64" className="size-8 shrink-0" aria-hidden="true">
-        <rect x="4" y="4" width="56" height="56" rx="17" fill="#17745D" />
-        <path d="M18 27h28v18a5 5 0 0 1-5 5H23a5 5 0 0 1-5-5V27z" fill="#fff" />
-        <path d="M15 21a4 4 0 0 1 4-4h26a4 4 0 0 1 4 4v6H15v-6z" fill="#BFE6D8" />
-        <circle cx="32" cy="37" r="4" fill="#17745D" />
-      </svg>
-      {withText && <span className="text-[1.15rem] font-extrabold tracking-tight text-ink">LifeBox</span>}
+    <span className={cx('inline-flex items-center gap-2', className)}>
+      <img src="/logo-mark.png" alt="" width={36} height={36} className="size-9 shrink-0 object-contain" draggable={false} />
+      {withText && (
+        <span className={cx('text-[1.2rem] font-extrabold tracking-tight', light ? 'text-white' : 'text-ink')}>
+          Life<span className={light ? 'text-sky-200' : 'bg-gradient-to-br from-sky-500 to-blue-700 bg-clip-text text-transparent'}>Box</span>
+        </span>
+      )}
     </span>
   );
 }

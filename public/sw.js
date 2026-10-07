@@ -1,8 +1,8 @@
 // LifeBox service worker: makes the installed app open instantly and work offline.
 // Pages: network first, falling back to the cached app shell. Built assets (hashed
 // file names): cache first. Supabase and other cross-origin calls are never cached.
-const VERSION = 'lifebox-v2';
-const SHELL = ['/', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
+const VERSION = 'lifebox-v3';
+const SHELL = ['/', '/manifest.webmanifest', '/favicon.png', '/logo-mark.png', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

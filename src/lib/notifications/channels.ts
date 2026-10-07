@@ -66,7 +66,7 @@ export const browserChannel: NotificationChannel = {
       // Fall back to a plain notification below.
     }
     try {
-      const n = new Notification(p.title, { body: p.body, tag: p.tag, icon: '/favicon.svg' });
+      const n = new Notification(p.title, { body: p.body, tag: p.tag, icon: '/icons/icon-192.png' });
       n.onclick = () => {
         window.focus();
         if (p.url) window.location.assign(p.url);
