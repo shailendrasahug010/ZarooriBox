@@ -6,7 +6,7 @@ export const CATEGORIES: Category[] = [
     name: 'Personal',
     emoji: '✨',
     tint: 'bg-violet-50 text-violet-700',
-    subcategories: ['Important dates', 'Documents', 'Renewals', 'Appointments'],
+    subcategories: ['Important dates', 'Documents', 'Renewals', 'Appointments', 'Meetings'],
   },
   {
     id: 'home',
@@ -49,6 +49,20 @@ export const CATEGORIES: Category[] = [
     emoji: '📄',
     tint: 'bg-teal-50 text-teal-800',
     subcategories: ['Passport', 'Driving licence', 'PAN', 'Aadhaar', 'Certificates', 'Warranties'],
+  },
+  {
+    id: 'health',
+    name: 'Health',
+    emoji: '💊',
+    tint: 'bg-pink-50 text-pink-700',
+    subcategories: ['Medicines', 'Doctor visits', 'Tests', 'Vaccines'],
+  },
+  {
+    id: 'bookings',
+    name: 'Bookings',
+    emoji: '🎟️',
+    tint: 'bg-indigo-50 text-indigo-700',
+    subcategories: ['Travel', 'Tickets', 'Hotel', 'Restaurant', 'Events', 'Appointments'],
   },
 ];
 

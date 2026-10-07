@@ -45,6 +45,7 @@ interface SeedMemory {
   location?: string;
   notes?: string;
   status?: Memory['status'];
+  times?: string[];
 }
 
 const MEMORIES: SeedMemory[] = [
@@ -65,6 +66,12 @@ const MEMORIES: SeedMemory[] = [
   { title: 'Health Insurance Premium', categoryId: 'finance', subcategory: 'Insurance', inDays: 63, remind: 15, repeat: 'yearly', amount: 22400 },
   { title: 'Driving Licence', categoryId: 'documents', subcategory: 'Driving licence', inDays: 410, remind: 30 },
   { title: 'Pest Control', categoryId: 'home', subcategory: 'Services', inDays: 52, remind: 3, repeat: 'quarterly' },
+  { title: 'Vitamin D', categoryId: 'health', subcategory: 'Medicines', inDays: 0, remind: 0, repeat: 'daily', times: ['09:00'], description: '1 tablet after breakfast' },
+  { title: 'BP Tablet (Amlodipine 5mg)', categoryId: 'health', subcategory: 'Medicines', inDays: 0, remind: 0, repeat: 'daily', times: ['08:00', '20:00'] },
+  { title: 'Dentist Check-up', categoryId: 'health', subcategory: 'Doctor visits', inDays: 6, remind: 1, times: ['17:30'], location: 'Smile Dental, Indiranagar' },
+  { title: 'Team Review Meeting', categoryId: 'personal', subcategory: 'Meetings', inDays: 2, remind: 0, times: ['11:00'], location: 'Google Meet' },
+  { title: 'Train to Mysuru', categoryId: 'bookings', subcategory: 'Travel', inDays: 16, remind: 1, times: ['06:15'], description: 'Shatabdi 12007 · Coach C3, seat 42', notes: 'PNR 4521837690' },
+  { title: 'Movie Tickets', categoryId: 'bookings', subcategory: 'Tickets', inDays: 3, remind: 0, times: ['19:30'], location: 'PVR Forum Mall' },
   { title: 'Gas Cylinder Booking', categoryId: 'home', subcategory: 'Bills', inDays: -3, remind: 0, status: 'completed' },
   { title: 'Old Scooter Insurance', categoryId: 'vehicle', subcategory: 'Insurance', inDays: -40, status: 'archived', description: 'Scooter sold in August' },
 ];
@@ -100,6 +107,7 @@ export function buildSeed(userId: ID): UserData {
       categoryId: s.categoryId,
       subcategory: s.subcategory,
       dueDate,
+      dueTimes: s.times ?? null,
       status: s.status ?? 'active',
       amount: s.amount ?? null,
       currency: 'INR',

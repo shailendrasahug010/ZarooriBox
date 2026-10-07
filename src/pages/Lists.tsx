@@ -2,12 +2,16 @@ import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { PageHeader } from '../components/ui';
 import { active, expiringSoon } from '../lib/selectors';
+import { isMedicine } from '../lib/medicines';
+import { todayISO } from '../lib/dates';
 import { useViews } from '../store/DataProvider';
 
 export default function Lists() {
   const { data, memories, lendings } = useViews();
   const tiles = [
     { to: '/app/shopping', emoji: '🛒', title: 'Shopping', meta: `${data.shopping.filter((s) => !s.purchased).length} to buy` },
+    { to: '/app/medicines', emoji: '💊', title: 'Medicines', meta: `${active(memories).filter(isMedicine).length} medicines` },
+    { to: '/app/bookings', emoji: '🎟️', title: 'Bookings', meta: `${active(memories).filter((m) => m.categoryId === 'bookings' && (!m.dueDate || m.dueDate >= todayISO())).length} upcoming` },
     { to: '/app/people', emoji: '👥', title: 'People & Things', meta: `${lendings.filter((l) => l.status === 'open').length} open` },
     { to: '/app/expiry', emoji: '⏰', title: 'Expiry Radar', meta: `${expiringSoon(memories).length} expiring` },
     { to: '/app/home-maintenance', emoji: '🏠', title: 'Home Maintenance', meta: `${active(memories).filter((m) => m.categoryId === 'home').length} tasks` },

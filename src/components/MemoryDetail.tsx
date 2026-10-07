@@ -5,7 +5,7 @@ import { useStore, useViews } from '../store/DataProvider';
 import { useT } from '../i18n';
 import { useToast } from './Toast';
 import { getCategory } from '../lib/categories';
-import { describeRepeat, formatDate } from '../lib/dates';
+import { describeRepeat, formatDate, formatTimes } from '../lib/dates';
 import { formatMoney } from '../lib/format';
 import { ConfirmDialog, Modal } from './Modal';
 import { useMemoryActions } from './useMemoryActions';
@@ -129,6 +129,7 @@ export function MemoryDetail({ id, onClose }: { id: string | null; onClose: () =
           {m.dueDate && (
             <Row icon={<CalendarDays className="size-5" />} label={m.isExpiry ? 'Expires / due' : 'Due'}>
               {formatDate(m.dueDate, { year: 'always' })}
+              {m.dueTimes?.length ? ` at ${formatTimes(m.dueTimes)}` : ''}
             </Row>
           )}
           <Row icon={<Bell className="size-5" />} label="Reminder">

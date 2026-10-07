@@ -13,13 +13,15 @@ create table if not exists public.categories (
   subcategories text[] not null default '{}'
 );
 insert into public.categories (id, name, emoji, subcategories) values
-  ('personal',  'Personal',  '✨', '{Important dates,Documents,Renewals,Appointments}'),
+  ('personal',  'Personal',  '✨', '{Important dates,Documents,Renewals,Appointments,Meetings}'),
   ('home',      'Home',      '🏠', '{Repairs,Maintenance,Bills,Appliances,Services}'),
   ('finance',   'Finance',   '💳', '{Bills,Insurance,Loans,Subscriptions,Payments}'),
   ('shopping',  'Shopping',  '🛒', '{Shopping list,Grocery,Wishlist}'),
   ('people',    'People',    '👥', '{Money lent,Money borrowed,Things lent,Things borrowed}'),
   ('vehicle',   'Vehicle',   '🚗', '{Insurance,PUC,Service,Registration,Repairs}'),
-  ('documents', 'Documents', '📄', '{Passport,Driving licence,PAN,Aadhaar,Certificates,Warranties}')
+  ('documents', 'Documents', '📄', '{Passport,Driving licence,PAN,Aadhaar,Certificates,Warranties}'),
+  ('health',    'Health',    '💊', '{Medicines,Doctor visits,Tests,Vaccines}'),
+  ('bookings',  'Bookings',  '🎟️', '{Travel,Tickets,Hotel,Restaurant,Events,Appointments}')
 on conflict (id) do nothing;
 
 -- ---------- User-owned tables ----------
@@ -51,6 +53,8 @@ create table if not exists public.memories (
   category_id text not null references public.categories(id),
   subcategory text check (char_length(subcategory) <= 60),
   due_date date,
+  -- Times of day (HH:MM) to alert on the due date, e.g. medicine doses or a meeting.
+  due_times text[] check (due_times is null or cardinality(due_times) = 0 or (cardinality(due_times) <= 8 and array_to_string(due_times, ',') ~ '^([01][0-9]|2[0-3]):[0-5][0-9](,([01][0-9]|2[0-3]):[0-5][0-9])*$')),
   status text not null default 'active' check (status in ('active','completed','archived')),
   amount numeric(14,2) check (amount >= 0),
   currency text not null default 'INR',

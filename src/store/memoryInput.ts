@@ -12,6 +12,8 @@ export interface MemoryInput {
   categoryId: CategoryId;
   subcategory?: string;
   dueDate?: ISODate | null;
+  /** Times of day (HH:mm) to alert on the due date. */
+  times?: string[];
   reminder: ReminderChoice;
   repeat: RepeatSpec;
   status: MemoryStatus;
@@ -40,6 +42,13 @@ export interface LendingInput {
 export type FieldErrors = Partial<Record<string, string>>;
 
 const MAX_TEXT = 2000;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** Valid, unique, sorted HH:mm times, or null when there are none. */
+export function normalizeTimes(times?: string[] | null): string[] | null {
+  const out = [...new Set((times ?? []).filter((t) => TIME_RE.test(t)))].sort().slice(0, 8);
+  return out.length ? out : null;
+}
 
 export function validateMemory(input: MemoryInput): FieldErrors {
   const e: FieldErrors = {};
@@ -47,6 +56,12 @@ export function validateMemory(input: MemoryInput): FieldErrors {
   if (!title) e.title = 'Give it a name, like “Car insurance”.';
   else if (title.length > 120) e.title = 'Keep the title under 120 characters.';
   if (input.dueDate && !isValidISO(input.dueDate)) e.dueDate = 'Pick a valid date.';
+  const times = (input.times ?? []).filter(Boolean);
+  if (times.length) {
+    if (times.length > 8) e.times = 'Up to 8 times a day.';
+    else if (times.some((t) => !TIME_RE.test(t))) e.times = 'Pick a valid time.';
+    else if (!input.dueDate) e.times = 'Add a date so we know which day.';
+  }
   if (input.reminder.mode === 'date') {
     if (!isValidISO(input.reminder.date)) e.reminder = 'Pick a valid reminder date.';
     else if (input.dueDate && input.reminder.date > input.dueDate) e.reminder = 'The reminder should be on or before the due date.';

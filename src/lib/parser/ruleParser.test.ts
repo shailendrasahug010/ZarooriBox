@@ -165,3 +165,34 @@ describe('shopping', () => {
     expect(p('Get the AC serviced').kind).toBe('memory');
   });
 });
+
+describe('times, medicines and bookings', () => {
+  const ctx = { today: '2026-10-07', currency: 'INR' };
+  it.each([
+    ['Take Vitamin D every day at 9am', 'health', 'Medicines', ['09:00'], 'daily'],
+    ['BP tablet twice a day', 'health', 'Medicines', ['09:00', '21:00'], 'daily'],
+    ['Metformin tablet 8:00 and 20:30 daily', 'health', 'Medicines', ['08:00', '20:30'], 'daily'],
+    ['Dentist appointment 12 Oct at 5:30 pm', 'health', 'Doctor visits', ['17:30'], 'never'],
+    ['Team meeting tomorrow at 11am', 'personal', 'Meetings', ['11:00'], 'never'],
+    ['Train to Pune 12 Nov at 6:30am', 'bookings', 'Travel', ['06:30'], 'never'],
+    ['Movie tickets Saturday 7pm', 'bookings', 'Tickets', ['19:00'], 'never'],
+  ])('%s', (text, categoryId, subcategory, times, freq) => {
+    const r = parseQuickAdd(text, ctx);
+    expect(r).toMatchObject({ kind: 'memory', categoryId, subcategory, times });
+    expect(r.repeat.frequency).toBe(freq);
+    expect(r.dueDate).not.toBeNull();
+  });
+
+  it('a time with no date means today', () => {
+    expect(parseQuickAdd('Call with Ravi at 4pm', ctx)).toMatchObject({ dueDate: '2026-10-07', times: ['16:00'] });
+  });
+
+  it('keeps time words out of the title', () => {
+    expect(parseQuickAdd('Team meeting tomorrow at 11am', ctx).title).toBe('Team Meeting');
+    expect(parseQuickAdd('BP tablet twice a day', ctx).title).toBe('BP Tablet');
+  });
+
+  it('still treats "buy tablets" as shopping', () => {
+    expect(parseQuickAdd('buy tablets and bread', ctx).kind).toBe('shopping');
+  });
+});

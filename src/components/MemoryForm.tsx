@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { ChevronDown, Paperclip, X } from 'lucide-react';
+import { ChevronDown, Clock, Paperclip, Plus, X } from 'lucide-react';
 import type { Attachment, CategoryId, RepeatFrequency, RepeatUnit } from '../types';
 import { MEMORY_CATEGORIES, getCategory } from '../lib/categories';
-import { REPEAT_LABELS, REPEAT_PRESETS, addDays, formatDate } from '../lib/dates';
+import { REPEAT_LABELS, REPEAT_PRESETS, addDays, formatDate, todayISO } from '../lib/dates';
 import { useData } from '../store/DataProvider';
 import type { FieldErrors, MemoryInput, ReminderChoice } from '../store/memoryInput';
 import { Field, Segmented, Switch, cx } from './ui';
@@ -68,9 +68,14 @@ export function MemoryForm({ initial, existingAttachments = [], submitLabel, onS
     else set('repeat', { ...REPEAT_PRESETS[freq] });
   };
 
+  const times = f.times ?? [];
+  const isMedicine = f.categoryId === 'health' && f.subcategory === 'Medicines';
+  const setTimes = (next: string[]) => setF((x) => ({ ...x, times: next, dueDate: next.length && !x.dueDate ? todayISO() : x.dueDate }));
+  const addTime = () => setTimes([...times, times.length === 0 ? '09:00' : times.length === 1 ? '21:00' : '14:00']);
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    onSubmit({ ...f, newFiles: files, removeAttachmentIds: removed });
+    onSubmit({ ...f, times: times.filter(Boolean), newFiles: files, removeAttachmentIds: removed });
   };
 
   return (
@@ -119,6 +124,37 @@ export function MemoryForm({ initial, existingAttachments = [], submitLabel, onS
         </Field>
         <Field label="Due / expiry date" htmlFor="mf-dueDate" error={errors.dueDate}>
           <input id="mf-dueDate" type="date" className="input" value={f.dueDate ?? ''} onChange={(e) => set('dueDate', e.target.value || null)} {...err('dueDate')} />
+        </Field>
+        <Field
+          label={isMedicine ? 'Dose times' : 'Time'}
+          htmlFor={times.length ? 'mf-time-0' : 'mf-add-time'}
+          error={errors.times}
+          hint={times.length ? `We’ll alert you at ${times.length === 1 ? 'this time' : 'each time'}${f.repeat.frequency === 'daily' ? ' every day' : ' on the day'}.` : 'Optional. For medicines, meetings and appointments.'}
+        >
+          <div className="space-y-2">
+            {times.map((tm, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  id={`mf-time-${i}`}
+                  type="time"
+                  className="input flex-1"
+                  aria-label={isMedicine ? `Dose ${i + 1} time` : times.length > 1 ? `Time ${i + 1}` : undefined}
+                  value={tm}
+                  onChange={(e) => setTimes(times.map((x, j) => (j === i ? e.target.value : x)))}
+                  {...err('times')}
+                />
+                <button type="button" className="grid size-11 place-items-center rounded-xl text-muted hover:bg-ink/5" aria-label={`Remove ${tm || 'time'}`} onClick={() => setTimes(times.filter((_, j) => j !== i))}>
+                  <X className="size-4" />
+                </button>
+              </div>
+            ))}
+            {times.length < 8 && (
+              <button id="mf-add-time" type="button" className="btn btn-secondary btn-sm" onClick={addTime}>
+                {times.length ? <Plus className="size-4" aria-hidden="true" /> : <Clock className="size-4" aria-hidden="true" />}
+                {times.length ? (isMedicine ? 'Add another dose' : 'Add another time') : isMedicine ? 'Add a dose time' : 'Add a time'}
+              </button>
+            )}
+          </div>
         </Field>
         <Field
           label="Remind me"

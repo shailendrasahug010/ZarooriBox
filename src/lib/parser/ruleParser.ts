@@ -226,6 +226,47 @@ function extractAmount(cur: Cursor, allowBare: boolean): AmountHit | null {
   return null;
 }
 
+// ---------- Times of day ----------
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+function hhmm(h: number, min: number, ampm?: string): string | null {
+  const ap = ampm?.toLowerCase().replace(/\./g, '');
+  if (ap) {
+    if (h < 1 || h > 12) return null;
+    if (ap === 'am' && h === 12) h = 0;
+    if (ap === 'pm' && h < 12) h += 12;
+  }
+  return h <= 23 && min <= 59 ? `${pad2(h)}:${pad2(min)}` : null;
+}
+
+const PARTS_OF_DAY: Record<string, string> = { morning: '08:00', afternoon: '14:00', evening: '18:00', night: '21:00' };
+
+/** Pulls every time of day out of the text: "at 9pm", "9:30 am", "21:00", "twice a day", "every night". */
+export function extractTimes(cur: Cursor): string[] {
+  const out = new Set<string>();
+  let m: RegExpExecArray | null;
+  const ampm = /\b(?:at\s+)?(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm|a\.m\.?|p\.m\.?)(?![a-z])/i;
+  while ((m = cur.take(ampm))) {
+    const t = hhmm(+m[1], m[2] ? +m[2] : 0, m[3]);
+    if (t) out.add(t);
+  }
+  const clock = /\b(?:at\s+)?([01]?\d|2[0-3]):([0-5]\d)\b(?:\s*(?:hrs|hours|baje))?/i;
+  while ((m = cur.take(clock))) out.add(`${pad2(+m[1])}:${m[2]}`);
+  if (!out.size) {
+    if (cur.take(/\b(?:thrice|three\s+times)\s+(?:a|per|every)\s+day\b/i)) ['08:00', '14:00', '21:00'].forEach((t) => out.add(t));
+    else if (cur.take(/\btwice\s+(?:a|per|every)\s+day\b|\btwice\s+daily\b/i)) ['09:00', '21:00'].forEach((t) => out.add(t));
+    else {
+      const parts = /\b(?:(?:every|each|in\s+the|at)\s+)?(morning|afternoon|evening|night)\b/i;
+      while ((m = cur.take(parts))) out.add(PARTS_OF_DAY[m[1].toLowerCase()]);
+    }
+  }
+  return [...out].sort();
+}
+
+/** True when the phrase also means "every day" ("twice a day", "every night"). */
+const DAILY_HINT = /\b(?:twice|thrice|three\s+times)\s+(?:a|per|every)\s+day\b|\btwice\s+daily\b|\b(?:every|each)\s+(?:morning|afternoon|evening|night)\b/i;
+
 // ---------- Categorisation ----------
 
 interface CategoryRule {
@@ -239,6 +280,14 @@ interface CategoryRule {
 const VEH = '(?:car|bike|scooter|scooty|vehicle|two[- ]wheeler|motorcycle|motorbike|activa|cycle)';
 
 const CATEGORY_RULES: CategoryRule[] = [
+  { re: /\b(medicines?|tablets?|pills?|capsules?|syrup|dose|insulin|vitamins?|inhaler|eye\s*drops|dawai|dawa)\b/i, categoryId: 'health', subcategory: 'Medicines', reminder: 0 },
+  { re: /\b(vaccinations?|vaccines?|booster|polio drops)\b/i, categoryId: 'health', subcategory: 'Vaccines', reminder: 1 },
+  { re: /\b(blood\s+test|test\s+report|sugar\s+test|thyroid|x-?ray|mri|ct\s+scan|ultrasound|sonography|ecg|lab\s+test)\b/i, categoryId: 'health', subcategory: 'Tests', reminder: 1 },
+  { re: /\b(doctor|dr\.?|dentist|check-?up|hospital|clinic|physio(?:therapy)?|opd)\b/i, categoryId: 'health', subcategory: 'Doctor visits', reminder: 1 },
+  { re: /\b(flight|train|irctc|bus\s+ticket|boarding|pnr|cab\s+booking)\b/i, categoryId: 'bookings', subcategory: 'Travel', reminder: 1 },
+  { re: /\b(hotel|check-?in|airbnb|resort|stay\s+booking)\b/i, categoryId: 'bookings', subcategory: 'Hotel', reminder: 1 },
+  { re: /\b(table\s+booking|dinner\s+reservation|restaurant|reservation)\b/i, categoryId: 'bookings', subcategory: 'Restaurant', reminder: 0 },
+  { re: /\b(movie|concert|cricket\s+match|show\s+tickets?|tickets?)\b/i, categoryId: 'bookings', subcategory: 'Tickets', reminder: 1 },
   { re: new RegExp(`\\b${VEH}\\b.*\\binsurance\\b|\\binsurance\\b.*\\b${VEH}\\b`, 'i'), categoryId: 'vehicle', subcategory: 'Insurance', reminder: 30, expiry: true },
   { re: /\b(puc|pollution)\b/i, categoryId: 'vehicle', subcategory: 'PUC', reminder: 7, expiry: true },
   { re: new RegExp(`\\b(rc\\b|registration certificate|${VEH}\\s+registration)`, 'i'), categoryId: 'vehicle', subcategory: 'Registration', reminder: 30, expiry: true },
@@ -264,7 +313,8 @@ const CATEGORY_RULES: CategoryRule[] = [
   { re: /\b(maintenance|service)\b/i, categoryId: 'home', subcategory: 'Maintenance', reminder: 3 },
   { re: /\bbills?\b/i, categoryId: 'finance', subcategory: 'Bills', reminder: 2 },
   { re: /\b(birthday|bday|b'day|anniversary|wedding)\b/i, categoryId: 'personal', subcategory: 'Important dates', reminder: 1 },
-  { re: /\b(doctor|dentist|appointment|check-?up|vaccination|vaccine|hospital|clinic|meeting|interview|exam|ptm|haircut|salon)\b/i, categoryId: 'personal', subcategory: 'Appointments', reminder: 1 },
+  { re: /\b(meeting|call|interview|standup|stand-up|review|presentation|webinar|zoom|teams|google\s+meet)\b/i, categoryId: 'personal', subcategory: 'Meetings', reminder: 0 },
+  { re: /\b(appointment|exam|ptm|haircut|salon|booking|booked)\b/i, categoryId: 'personal', subcategory: 'Appointments', reminder: 1 },
   { re: /\b(renew|renewal|expires?|expiry|expiring)\b/i, categoryId: 'personal', subcategory: 'Renewals', reminder: 7, expiry: true },
 ];
 
@@ -402,7 +452,10 @@ export function parseQuickAdd(raw: string, ctx: ParseContext): ParsedQuickAdd {
   const today = ctx.today;
   const cur = new Cursor(text);
 
-  const repeatHit = extractRepeat(cur, today);
+  const dailyHint = DAILY_HINT.test(text);
+  const times = extractTimes(cur);
+  let repeatHit = extractRepeat(cur, today);
+  if (!repeatHit && dailyHint) repeatHit = { spec: { ...REPEAT_PRESETS.daily } };
   const dateHit = extractDate(cur, today);
   const lendingProbe = detectLending(cur.text);
   const amountHit = extractAmount(cur, !!lendingProbe);
@@ -458,7 +511,7 @@ export function parseQuickAdd(raw: string, ctx: ParseContext): ParsedQuickAdd {
   }
 
   // 2. Shopping
-  if (!dateHit && !repeatHit) {
+  if (!dateHit && !repeatHit && !times.length) {
     const items = detectShopping(cur.text);
     if (items && items.length) {
       return {
@@ -480,6 +533,7 @@ export function parseQuickAdd(raw: string, ctx: ParseContext): ParsedQuickAdd {
   const rule = categorize(`${text} ${hindiHints(raw)}`);
   const isExpiry = !!rule?.expiry || /\b(expire|expiry|expiring|renew|valid\s+till|valid\s+until)/i.test(text);
   let dueDate: ISODate | null = repeatHit?.anchor ?? dateHit?.date ?? null;
+  if (!dueDate && times.length && !repeatHit) dueDate = today; // "meeting at 4pm"
   if (!dueDate && repeatHit) {
     // "RO filter change every 6 months" with no date: first due one cycle from now.
     dueDate = repeat.unit === 'day' ? today : addUnit(today, repeat.interval, repeat.unit);
@@ -490,6 +544,7 @@ export function parseQuickAdd(raw: string, ctx: ParseContext): ParsedQuickAdd {
 
   let title = cleanTitle(cur.text);
   if (!title) title = cleanTitle(text) || text;
+  if (rule?.subcategory === 'Medicines') title = title.replace(/^(?:take|have|give)\s+/i, '') || title;
   title = titleCase(title);
 
   const signals = [!!rule, !!dueDate].filter(Boolean).length;
@@ -500,6 +555,7 @@ export function parseQuickAdd(raw: string, ctx: ParseContext): ParsedQuickAdd {
     categoryId: rule?.categoryId ?? 'personal',
     subcategory: rule?.subcategory,
     dueDate,
+    ...(times.length ? { times } : {}),
     reminderDaysBefore,
     person: null,
     isExpiry,

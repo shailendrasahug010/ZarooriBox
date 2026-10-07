@@ -101,25 +101,18 @@ const PLATFORMS = ['🌐 Web', '🤖 Android', '🍎 iPhone'];
 
 export function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle?: string; children: ReactNode; footer?: ReactNode }) {
   return (
-    <div className="grid min-h-dvh bg-paper lg:grid-cols-[1.1fr_1fr]">
-      {/* Phone: a short animated band above the form. */}
-      <header className="relative overflow-hidden rounded-b-[2rem] bg-gradient-to-br from-brand-800 via-brand-700 to-brand-600 pb-6 pt-[calc(env(safe-area-inset-top)+1.25rem)] text-white lg:hidden">
+    <div className="grid min-h-dvh grid-rows-[auto_1fr] bg-paper lg:grid-cols-[1.1fr_1fr] lg:grid-rows-1">
+      {/* Phone: a slim animated band above the form, so the whole page fits one screen. */}
+      <header className="relative overflow-hidden rounded-b-[1.75rem] bg-gradient-to-br from-brand-800 via-brand-700 to-brand-600 pb-4 pt-[calc(env(safe-area-inset-top)+0.9rem)] text-white lg:hidden">
         <Blobs />
         <div className="relative px-5">
           <Link to="/" aria-label="ZarooriBox home" className="inline-flex rounded-xl animate-fade-up">
-            <AnimatedLogo light size="size-12" />
+            <AnimatedLogo light size="size-10" />
           </Link>
-          <p className="mt-4 text-[1.6rem] font-extrabold leading-tight tracking-tight animate-fade-up" style={{ animationDelay: '80ms' }}>
+          <p className="mt-2.5 text-xl font-extrabold leading-tight tracking-tight animate-fade-up [@media(max-height:780px)]:hidden" style={{ animationDelay: '80ms' }}>
             Everything important, in one place.
           </p>
-          <RotatingLine className="mt-1.5 text-[1.02rem] text-brand-100 animate-fade-up" />
-        </div>
-        <div className="relative mt-5 overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_8%,#000_92%,transparent)]" aria-hidden="true">
-          <div className="flex w-max gap-3 animate-marquee hover:[animation-play-state:paused]">
-            {[...REMINDERS, ...REMINDERS].map((r, i) => (
-              <ReminderCard key={i} r={r} className="w-60 shrink-0 py-2.5" />
-            ))}
-          </div>
+          <RotatingLine className="mt-1 text-[0.98rem] text-brand-100 animate-fade-up" />
         </div>
       </header>
 
@@ -172,46 +165,28 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
         </p>
       </aside>
 
-      <main className="relative flex flex-col px-5 pb-8 pt-5 sm:px-10 sm:pt-7 lg:py-10">
+      <main className="relative flex flex-col px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 sm:px-10 sm:pt-7 lg:py-8">
         <div className="m-auto w-full max-w-sm">
           <img
             src="/logo.png"
             alt="ZarooriBox: Everything important, in one place."
             width={600}
             height={557}
-            className="mx-auto mb-4 h-auto w-36 animate-pop drop-shadow-[0_12px_24px_rgb(29_111_242/0.18)] sm:mb-6 sm:w-48"
+            className="mx-auto mb-5 hidden h-auto w-40 animate-pop [@media(max-height:860px)]:w-28 drop-shadow-[0_12px_24px_rgb(29_111_242/0.18)] lg:block"
             draggable={false}
           />
           <div className="animate-fade-up" style={{ animationDelay: '120ms' }}>
-            <h1 className="text-[1.75rem] font-extrabold tracking-tight">{title}</h1>
-            {subtitle && <p className="mt-1.5 text-muted">{subtitle}</p>}
+            <h1 className="text-2xl font-extrabold tracking-tight lg:text-[1.75rem]">{title}</h1>
+            {subtitle && <p className="mt-1 text-sm text-muted lg:mt-1.5 lg:text-base">{subtitle}</p>}
           </div>
-          <div className="mt-7 animate-fade-up" style={{ animationDelay: '200ms' }}>
+          <div className="mt-4 animate-fade-up lg:mt-7" style={{ animationDelay: '200ms' }}>
             {children}
           </div>
           {footer && (
-            <div className="mt-6 text-center text-sm text-muted animate-fade-up" style={{ animationDelay: '280ms' }}>
+            <div className="mt-4 text-center text-sm text-muted animate-fade-up lg:mt-6" style={{ animationDelay: '280ms' }}>
               {footer}
             </div>
           )}
-          {/* Phone: what ZarooriBox does, below the form. */}
-          <ul className="mt-9 grid grid-cols-2 gap-2.5 lg:hidden">
-            {FEATURES.map((f, i) => (
-              <li key={f.title} className="rounded-2xl bg-surface p-3 shadow-card animate-fade-up" style={{ animationDelay: `${360 + i * 80}ms` }}>
-                <span className="text-lg" aria-hidden="true">{f.emoji}</span>
-                <p className="mt-0.5 text-sm font-bold">{f.title}</p>
-                <p className="text-xs leading-snug text-muted">{f.body}</p>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-5 flex flex-wrap items-center justify-center gap-1.5 text-xs text-muted lg:hidden">
-            One account on
-            {PLATFORMS.map((p) => (
-              <span key={p} className="rounded-full bg-surface px-2 py-0.5 font-semibold text-ink-soft shadow-card">
-                {p}
-              </span>
-            ))}
-          </p>
         </div>
       </main>
     </div>

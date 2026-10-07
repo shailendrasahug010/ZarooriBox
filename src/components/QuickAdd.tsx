@@ -5,7 +5,7 @@ import { useT, type MessageKey } from '../i18n';
 import { aiQuickAddEnabled, parseQuickAdd, quickAddParser, type ParsedQuickAdd } from '../lib/parser';
 import { VOICE_ERROR_TEXT, getVoiceInput, voiceLangFor, type VoiceSession } from '../lib/voice';
 import { getCategory } from '../lib/categories';
-import { describeRepeat, formatDate, relativeLabel, todayISO } from '../lib/dates';
+import { describeRepeat, formatDate, relativeLabel, todayISO, formatTimes } from '../lib/dates';
 import { formatMoney } from '../lib/format';
 import { useStore } from '../store/DataProvider';
 import { useToast } from './Toast';
@@ -44,6 +44,7 @@ function Preview({ p, ai }: { p: ParsedQuickAdd; ai?: boolean }) {
   } else {
     chips.push(['Category', p.subcategory ? `${getCategory(p.categoryId).name} · ${p.subcategory}` : getCategory(p.categoryId).name]);
     if (p.dueDate) chips.push(['Date', `${formatDate(p.dueDate, { year: 'always' })} (${relativeLabel(p.dueDate)})`]);
+    if (p.times?.length) chips.push([p.times.length > 1 ? 'Times' : 'Time', formatTimes(p.times)]);
     const r = reminderText(p);
     if (r) chips.push(['Reminder', r]);
     if (p.repeat.frequency !== 'never') chips.push(['Repeats', describeRepeat(p.repeat)]);
