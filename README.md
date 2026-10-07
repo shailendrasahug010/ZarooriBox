@@ -140,7 +140,9 @@ After changing web code, run `npm run build && npx cap sync` again. Icons and sp
 
 ## Deploy
 
-It's a static single-page app. Build with `npm run build` and host `dist/` on Vercel, Netlify, Cloudflare Pages or Supabase hosting. Configure a SPA fallback so every path serves `index.html` (Vercel and Netlify detect Vite automatically; on Netlify `public/_redirects` already does it).
+It's a static single-page app. Build with `npm run build` and host `dist/` on Vercel, Netlify, Cloudflare Pages or Supabase hosting. On Netlify, [`netlify.toml`](netlify.toml) has the build, the SPA fallback and cache headers, so connecting the repo is enough.
+
+Step-by-step setup for the parts that need your own accounts (Netlify, Google sign-in and Drive, Google Play, TestFlight) is in [`docs/store-setup.md`](docs/store-setup.md). Store builds: the **Android release** workflow makes the signed Play bundle and **iOS TestFlight** uploads to App Store Connect; both read their keys from GitHub secrets. The privacy policy is at `/privacy`, and **Settings → Delete my account** (the `delete-account` function) covers the stores' account-deletion rule.
 
 ## How it's built
 

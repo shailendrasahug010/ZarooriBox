@@ -510,6 +510,16 @@ await step('Swipe right marks done, swipe left snoozes, bell has quick actions',
   await v.ctx.close();
 });
 
+await step('Privacy policy page is public and linked from the home page', async () => {
+  const g = await newPage();
+  await g.page.goto(`${BASE}/`);
+  await g.page.getByRole('link', { name: 'Privacy policy' }).click();
+  await g.page.waitForURL('**/privacy');
+  await g.page.getByRole('heading', { name: 'Privacy policy' }).waitFor();
+  await g.page.getByText(/Delete my account permanently deletes/).waitFor();
+  await g.ctx.close();
+});
+
 await step('Public action page without a valid link says so', async () => {
   const v = await newPage();
   await v.page.goto(`${BASE}/act?t=bad`);
@@ -576,7 +586,41 @@ await step('Favourites: star an item, it shows under Favourites, unstar removes 
   await p.getByText('Passport').first().waitFor();
   expect((await p.getByText('Movie Tickets').count()) === 0, 'unstarred item still listed');
 });
+await step('Medicines: a dose ticked as taken stays taken after reopening', async () => {
+  const p = m.page;
+  await p.goto(`${BASE}/app/medicines`);
+  const take = p.getByRole('button', { name: /Vitamin D at/ }).first();
+  await take.click();
+  await p.getByRole('button', { name: /^Taken: Vitamin D/ }).first().waitFor();
+  await p.reload();
+  await p.getByRole('button', { name: /^Taken: Vitamin D/ }).first().waitFor();
+  await p.getByRole('button', { name: /^Taken: Vitamin D/ }).first().click();
+  await p.getByRole('button', { name: /^Mark taken: Vitamin D/ }).first().waitFor();
+});
 await m.ctx.close();
+
+await step('Delete my account: signs out, and the account can’t log in again', async () => {
+  const d = await newPage();
+  await d.ctx.grantPermissions(['notifications'], { origin: BASE });
+  const p = d.page;
+  const gone = `gone${Date.now()}@example.com`;
+  await p.goto(`${BASE}/signup`);
+  await p.fill('#su-name', 'Ravi');
+  await p.fill('#su-email', gone);
+  await p.fill('#su-password', 'ravipass12');
+  await p.getByRole('button', { name: 'Create account' }).click();
+  await p.waitForURL('**/app/welcome');
+  await p.goto(`${BASE}/app/settings`);
+  await p.getByRole('button', { name: 'Delete my account' }).click();
+  await p.getByRole('dialog').getByRole('button', { name: 'Delete my account' }).click();
+  await p.getByText('Your account has been deleted').waitFor();
+  await p.goto(`${BASE}/login`);
+  await p.fill('#login-email', gone);
+  await p.fill('#login-password', 'ravipass12');
+  await p.getByRole('button', { name: 'Log in' }).click();
+  await p.getByText(/don’t match/).waitFor();
+  await d.ctx.close();
+});
 await browser.close();
 
 for (const r of results) console.log(r.join('  '));

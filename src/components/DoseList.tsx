@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Check } from 'lucide-react';
 import { formatTime, todayISO } from '../lib/dates';
-import { dosesOn, readTaken, writeTaken } from '../lib/medicines';
+import { dosesOn } from '../lib/medicines';
 import { useStore, useViews } from '../store/DataProvider';
 import { cx } from './ui';
 
@@ -16,16 +16,44 @@ export function DoseList({ limit }: { limit?: number }) {
   const { data } = useViews();
   const day = todayISO();
   const doses = useMemo(() => dosesOn(data.memories, data.recurrences, day), [data.memories, data.recurrences, day]);
-  const [taken, setTaken] = useState(() => readTaken(store.uid, day));
+  const [taken, setTaken] = useState<Set<string>>(() => new Set());
+  const [error, setError] = useState('');
+
+  // Ticks live with the account, so reload them when the app comes back to the front.
+  useEffect(() => {
+    let live = true;
+    const load = () => {
+      if (document.visibilityState === 'hidden') return;
+      store.takenDoses(day).then(
+        (t) => live && setTaken(t),
+        () => live && setError('Couldn’t load today’s ticks.'),
+      );
+    };
+    load();
+    document.addEventListener('visibilitychange', load);
+    return () => {
+      live = false;
+      document.removeEventListener('visibilitychange', load);
+    };
+  }, [store, day]);
   const now = nowHHMM();
   const shown = limit ? doses.slice(0, limit) : doses;
 
   const toggle = (k: string) => {
-    const next = new Set(taken);
-    if (next.has(k)) next.delete(k);
-    else next.add(k);
-    setTaken(next);
-    writeTaken(store.uid, day, next);
+    const on = !taken.has(k);
+    const apply = (yes: boolean) =>
+      setTaken((cur) => {
+        const next = new Set(cur);
+        if (yes) next.add(k);
+        else next.delete(k);
+        return next;
+      });
+    apply(on);
+    setError('');
+    store.setDoseTaken(day, k, on).catch(() => {
+      apply(!on);
+      setError('Couldn’t save that tick. Check your connection and try again.');
+    });
   };
 
   if (!doses.length) return null;
@@ -54,6 +82,11 @@ export function DoseList({ limit }: { limit?: number }) {
           </li>
         );
       })}
+      {error && (
+        <li role="alert" className="px-2 text-sm text-attn">
+          {error}
+        </li>
+      )}
       {limit && doses.length > limit && <li className="px-2 text-sm text-muted">+{doses.length - limit} more today</li>}
     </ul>
   );

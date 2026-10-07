@@ -171,5 +171,16 @@ export function createSupabaseAuth(): AuthService {
       fail(error);
       return toUser(data.user!);
     },
+    async deleteAccount() {
+      if (deviceDemoOn()) {
+        setDeviceDemo(false);
+        await device.deleteAccount();
+        return;
+      }
+      const { data, error } = await sb.functions.invoke('delete-account', { body: {} });
+      if (error || !data?.deleted) throw new AuthError('Could not delete your account. Check your connection and try again.');
+      // The account is gone on the server, so only this device's session is left to clear.
+      await sb.auth.signOut({ scope: 'local' }).catch(() => {});
+    },
   };
 }

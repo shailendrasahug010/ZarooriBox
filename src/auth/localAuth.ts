@@ -1,5 +1,5 @@
 import type { User } from '../types';
-import type { KeyValueStore } from '../data/localRepository';
+import { dataKey, type KeyValueStore } from '../data/localRepository';
 import type { AuthService } from './types';
 import { hashPassword, randomSalt, randomToken, verifyPassword } from './hash';
 import { AuthError, validateEmail, validateName, validatePassword } from './validation';
@@ -159,6 +159,14 @@ export function createLocalAuth(store: KeyValueStore = localStorage): AuthServic
       if (patch.name !== undefined) u.name = patch.name.trim();
       save(USERS, all);
       return publicUser(u);
+    },
+
+    async deleteAccount() {
+      const current = await this.getCurrentUser();
+      if (!current) throw new AuthError('Please log in again.');
+      save(USERS, users().filter((x) => x.id !== current.id));
+      store.removeItem(dataKey(current.id));
+      store.removeItem(SESSION);
     },
   };
 }

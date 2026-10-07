@@ -27,7 +27,7 @@ export function dosesOn(memories: Memory[], recurrences: RecurringItem[], day: I
   return out.sort((a, b) => a.time.localeCompare(b.time) || a.title.localeCompare(b.title));
 }
 
-// Which doses were taken is kept on this device, one small list per day.
+// Without a cloud account, which doses were taken is kept on this device, one small list per day.
 const key = (uid: ID, day: ISODate) => `zaroori:v1:doses:${uid}:${day}`;
 
 export function readTaken(uid: ID, day: ISODate): Set<string> {
@@ -41,6 +41,14 @@ export function readTaken(uid: ID, day: ISODate): Set<string> {
 export function writeTaken(uid: ID, day: ISODate, taken: Set<string>) {
   try {
     globalThis.localStorage?.setItem(key(uid, day), JSON.stringify([...taken]));
+  } catch {
+    /* best effort */
+  }
+}
+
+export function clearTaken(uid: ID, day: ISODate) {
+  try {
+    globalThis.localStorage?.removeItem(key(uid, day));
   } catch {
     /* best effort */
   }

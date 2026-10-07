@@ -1,4 +1,4 @@
-import type { Attachment, CollectionName, CollectionRecord, Family, ID, UserData, UserSettings } from '../types';
+import type { Attachment, CollectionName, CollectionRecord, Family, ID, ISODate, UserData, UserSettings } from '../types';
 
 /**
  * Storage port. The app talks only to this interface, so localStorage and
@@ -19,6 +19,14 @@ export interface Repository {
   clearAll(): Promise<void>;
   /** Family sharing. Only cloud accounts have it, because it needs a server. */
   readonly family?: FamilyService;
+  /** Medicine doses marked "Taken". Cloud accounts keep them; local mode uses this device. */
+  readonly doses?: DoseLogService;
+}
+
+export interface DoseLogService {
+  /** Keys ("<memoryId>@<HH:mm>") of the doses taken on that day. */
+  taken(day: ISODate): Promise<string[]>;
+  set(day: ISODate, key: string, taken: boolean): Promise<void>;
 }
 
 export interface FamilyService {
