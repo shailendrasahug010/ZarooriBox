@@ -7,7 +7,7 @@ import { buildMemoryViews, dueToday } from '../lib/selectors';
 import { searchAll } from '../lib/search';
 import { buildLendingViews } from '../lib/selectors';
 import type { User } from '../types';
-import { LifeBoxStore, ValidationError } from './LifeBoxStore';
+import { ZarooriStore, ValidationError } from './ZarooriStore';
 import type { MemoryInput } from './memoryInput';
 
 const TODAY = '2026-10-06';
@@ -15,7 +15,7 @@ const alice: User = { id: 'usr_alice', email: 'a@x.com', name: 'Alice', createdA
 const bob: User = { id: 'usr_bob', email: 'b@x.com', name: 'Bob', createdAt: '' };
 
 let kv: KeyValueStore;
-let store: LifeBoxStore;
+let store: ZarooriStore;
 
 const input = (over: Partial<MemoryInput> = {}): MemoryInput => ({
   title: 'Car insurance',
@@ -31,14 +31,14 @@ const input = (over: Partial<MemoryInput> = {}): MemoryInput => ({
 beforeEach(async () => {
   setNow(new Date(2026, 9, 6, 9, 0));
   kv = memoryStore();
-  store = new LifeBoxStore(createLocalRepository(alice.id, kv), alice);
+  store = new ZarooriStore(createLocalRepository(alice.id, kv), alice);
   await store.init();
 });
 afterEach(() => setNow(null));
 
 /** A second store over the same storage proves writes were persisted. */
 async function reload(user = alice) {
-  const s = new LifeBoxStore(createLocalRepository(user.id, kv), user);
+  const s = new ZarooriStore(createLocalRepository(user.id, kv), user);
   await s.init();
   return s.getSnapshot();
 }
@@ -172,7 +172,7 @@ describe('reminders', () => {
 describe('demo + search', () => {
   it('seeds demo data and finds insurance', async () => {
     const demo: User = { ...alice, id: 'usr_demo', isDemo: true };
-    const s = new LifeBoxStore(createLocalRepository(demo.id, kv), demo);
+    const s = new ZarooriStore(createLocalRepository(demo.id, kv), demo);
     await s.init();
     const d = s.getSnapshot();
     expect(d.memories.length).toBeGreaterThan(10);
@@ -187,7 +187,7 @@ describe('data isolation', () => {
   it('a user never sees or writes another user’s rows', async () => {
     const m = await store.addMemory(input());
     const bobRepo = createLocalRepository(bob.id, kv);
-    const bobStore = new LifeBoxStore(bobRepo, bob);
+    const bobStore = new ZarooriStore(bobRepo, bob);
     await bobStore.init();
     expect(bobStore.getSnapshot().memories).toHaveLength(0);
     // Bob cannot update or insert Alice's rows through his repository.

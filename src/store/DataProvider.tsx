@@ -6,21 +6,21 @@ import { isNativeApp, syncNativeSchedule } from '../lib/notifications/native';
 import { buildLendingViews, buildMemoryViews } from '../lib/selectors';
 import { getLanguage, setLanguage } from '../i18n';
 import type { UserData } from '../types';
-import { LifeBoxStore } from './LifeBoxStore';
+import { ZarooriStore } from './ZarooriStore';
 
-const StoreContext = createContext<LifeBoxStore | null>(null);
+const StoreContext = createContext<ZarooriStore | null>(null);
 
 const CHECK_EVERY_MS = 60_000;
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [store, setStore] = useState<LifeBoxStore | null>(null);
+  const [store, setStore] = useState<ZarooriStore | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    const s = new LifeBoxStore(createRepository(user.id, user.onDevice), user);
+    const s = new ZarooriStore(createRepository(user.id, user.onDevice), user);
     s.init()
       .then(() => !cancelled && setStore(s))
       .catch((e: Error) => !cancelled && setError(e.message));
@@ -41,9 +41,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (fired.length === 1) {
           const f = fired[0];
           const target = f.memoryId ? { kind: 'memory' as const, id: f.memoryId } : f.lendingId ? { kind: 'lending' as const, id: f.lendingId } : undefined;
-          await deviceChannel.send({ title: f.title, body: f.body, tag: `lifebox-${f.dueDate}`, url: '/app', target });
+          await deviceChannel.send({ title: f.title, body: f.body, tag: `zaroori-${f.dueDate}`, url: '/app', target });
         } else {
-          await deviceChannel.send({ title: `LifeBox: ${fired.length} things need you`, body: fired.slice(0, 3).map((f) => f.title).join(', '), tag: 'lifebox-digest', url: '/app' });
+          await deviceChannel.send({ title: `Zaroori: ${fired.length} things need you`, body: fired.slice(0, 3).map((f) => f.title).join(', '), tag: 'zaroori-digest', url: '/app' });
         }
       } catch {
         // A failed check retries on the next tick.
@@ -105,7 +105,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return (
       <div role="alert" className="grid min-h-dvh place-items-center bg-paper p-6 text-center">
         <div>
-          <p className="text-lg font-semibold text-ink">We couldn’t load your LifeBox.</p>
+          <p className="text-lg font-semibold text-ink">We couldn’t load your Zaroori.</p>
           <p className="mt-1 text-muted">{error}</p>
           <button className="btn btn-primary mt-5" onClick={() => location.reload()}>Try again</button>
         </div>
@@ -117,7 +117,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       <div className="grid min-h-dvh place-items-center bg-paper" aria-busy="true" aria-live="polite">
         <div className="flex flex-col items-center gap-3 text-muted">
           <span className="size-10 animate-pulse rounded-2xl bg-brand-600" />
-          <span className="text-sm">Opening your LifeBox…</span>
+          <span className="text-sm">Opening your Zaroori…</span>
         </div>
       </div>
     );
@@ -125,7 +125,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
 }
 
-export function useStore(): LifeBoxStore {
+export function useStore(): ZarooriStore {
   const s = useContext(StoreContext);
   if (!s) throw new Error('useStore must be used inside DataProvider');
   return s;

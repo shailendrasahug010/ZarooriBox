@@ -1,7 +1,7 @@
 {
-  "name": "LifeBox",
-  "short_name": "LifeBox",
-  "description": "Everything you don't want to forget: bills, renewals, home maintenance, shopping and things you lent.",
+  "name": "Zaroori",
+  "short_name": "Zaroori",
+  "description": "Everything important, in one place: bills, renewals, home maintenance, shopping and things you lent.",
   "id": "/app",
   "start_url": "/app",
   "scope": "/",

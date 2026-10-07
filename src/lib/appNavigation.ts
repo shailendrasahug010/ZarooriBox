@@ -24,7 +24,7 @@ export function registerNavigator(fn: Navigate) {
   };
 }
 
-/** Maps a deep link (app.lifebox://add?voice=1, app.lifebox://share?text=…) to an app path. */
+/** Maps a deep link (app.zaroori://add?voice=1, app.zaroori://share?text=…) to an app path. */
 export function pathForDeepLink(url: string): string | null {
   let u: URL;
   try {
@@ -32,8 +32,8 @@ export function pathForDeepLink(url: string): string | null {
   } catch {
     return null;
   }
-  if (u.protocol !== 'app.lifebox:') return null;
-  // "app.lifebox://add?voice=1": the host is the screen.
+  if (u.protocol !== 'app.zaroori:') return null;
+  // "app.zaroori://add?voice=1": the host is the screen.
   const screen = u.host || u.pathname.replace(/^\/+/, '');
   if (screen === 'add') return `/app?${u.searchParams.get('voice') === '1' ? 'voice=1' : 'add=1'}`;
   if (screen === 'scan') return '/app/add?scan=1';

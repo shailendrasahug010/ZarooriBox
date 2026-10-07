@@ -1,4 +1,4 @@
-// Core domain model for LifeBox.
+// Core domain model for Zaroori.
 // Each entity maps 1:1 to a table in supabase/schema.sql (camelCase here, snake_case in SQL).
 
 export type ID = string;

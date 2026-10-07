@@ -72,7 +72,7 @@ function Alternatives() {
         </button>
         {!service.supportsGoogle && (
           <p id="google-note" className="text-center text-xs text-muted">
-            Google sign-in turns on when LifeBox is connected to its cloud backend.
+            Google sign-in turns on when Zaroori is connected to its cloud backend.
           </p>
         )}
         <button
@@ -126,7 +126,7 @@ export function Login() {
       subtitle="Log in to see what needs your attention."
       footer={
         <>
-          New to LifeBox?{' '}
+          New to Zaroori?{' '}
           <Link to="/signup" className="font-semibold text-brand-700 hover:underline">
             Create a free account
           </Link>
@@ -217,7 +217,7 @@ export function Signup() {
           <PasswordInput id="su-password" value={password} onChange={setPassword} error={errors.password} autoComplete="new-password" />
         </Field>
         <button type="submit" className="btn btn-primary w-full" disabled={busy}>
-          {busy ? 'Creating your LifeBox…' : 'Create account'}
+          {busy ? 'Creating your Zaroori…' : 'Create account'}
         </button>
         <p className="text-center text-xs text-muted">Your data is private to you. We never sell it or show ads.</p>
       </form>
@@ -266,7 +266,7 @@ export function ForgotPassword() {
           <p className="mt-1 text-sm">If an account exists for {email}, a reset link is on its way.</p>
           {devLink && (
             <p className="mt-3 rounded-xl bg-white/70 p-3 text-sm text-ink-soft">
-              This copy of LifeBox runs without an email server, so here’s your link:{' '}
+              This copy of Zaroori runs without an email server, so here’s your link:{' '}
               <Link to={devLink} className="font-semibold text-brand-700 underline">
                 Choose a new password
               </Link>

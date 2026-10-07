@@ -7,14 +7,14 @@ import { hi } from '../i18n/hi';
 
 describe('deep links', () => {
   it.each([
-    ['app.lifebox://add?voice=1', '/app?voice=1'],
-    ['app.lifebox://add', '/app?add=1'],
-    ['app.lifebox://scan', '/app/add?scan=1'],
-    ['app.lifebox://shopping', '/app/shopping'],
-    ['app.lifebox://share?text=Pay%20rent%20on%205th', '/app/share?text=Pay+rent+on+5th'],
-    ['app.lifebox://act?kind=memory&id=m1&do=done', '/app/act?kind=memory&id=m1&do=done'],
+    ['app.zaroori://add?voice=1', '/app?voice=1'],
+    ['app.zaroori://add', '/app?add=1'],
+    ['app.zaroori://scan', '/app/add?scan=1'],
+    ['app.zaroori://shopping', '/app/shopping'],
+    ['app.zaroori://share?text=Pay%20rent%20on%205th', '/app/share?text=Pay+rent+on+5th'],
+    ['app.zaroori://act?kind=memory&id=m1&do=done', '/app/act?kind=memory&id=m1&do=done'],
     ['https://evil.example/add', null],
-    ['app.lifebox://unknown', null],
+    ['app.zaroori://unknown', null],
     ['not a url', null],
   ])('%s', (url, path) => expect(pathForDeepLink(url)).toBe(path));
 });

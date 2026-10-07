@@ -115,7 +115,7 @@ export function AppLayout() {
 
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[16.5rem] flex-col border-r border-line/80 bg-paper px-4 py-5 lg:flex" aria-label="Main">
-        <Link to="/app" className="mb-6 px-2" aria-label="LifeBox home">
+        <Link to="/app" className="mb-6 px-2" aria-label="Zaroori home">
           <Logo />
         </Link>
         <nav className="flex-1 space-y-0.5 overflow-y-auto">
@@ -138,7 +138,7 @@ export function AppLayout() {
         {/* Top bar */}
         <header className="sticky top-0 z-20 border-b border-line/60 bg-paper/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
           <div className="mx-auto flex h-16 max-w-5xl items-center gap-2 px-4 sm:px-6">
-            <Link to="/app" className="lg:hidden" aria-label="LifeBox home">
+            <Link to="/app" className="lg:hidden" aria-label="Zaroori home">
               <Logo />
             </Link>
             <form

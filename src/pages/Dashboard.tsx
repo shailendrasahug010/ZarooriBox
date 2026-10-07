@@ -25,7 +25,7 @@ function greetingKey(): MessageKey {
   return 'greet.evening';
 }
 
-const HINT_KEY = 'lifebox:v1:swipe-hint-seen';
+const HINT_KEY = 'zaroori:v1:swipe-hint-seen';
 
 export function lendingTitle(l: LendingView) {
   const who = l.person?.name ?? 'Someone';

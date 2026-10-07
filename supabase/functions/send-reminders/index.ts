@@ -1,4 +1,4 @@
-// Delivers LifeBox reminders by email, WhatsApp and SMS.
+// Delivers Zaroori reminders by email, WhatsApp and SMS.
 //
 // Two ways in:
 // - The scheduler (supabase/cron.sql) calls it every 15 minutes with the
@@ -9,7 +9,7 @@
 //
 // Family members get their own reminders for items shared with their family, at their
 // own time and on their own channels. Emails carry Done / Tomorrow / Next week links
-// (signed per person and item, see _shared/actionToken.ts) that open LIFEBOX_APP_URL/act.
+// (signed per person and item, see _shared/actionToken.ts) that open ZAROORI_APP_URL/act.
 //
 // Secrets: the provider keys listed in _shared/messaging.ts. The scheduler's secret
 // is generated in Vault by cron.sql (or set CRON_SECRET to use your own).
@@ -22,12 +22,12 @@ import { createMessenger, type Recipient } from '../_shared/messaging.ts';
 import { enabledChannels, planForUser, type DueLending, type DueReminder, type ExternalChannel, type SettingsRow } from '../_shared/reminderPlan.ts';
 
 const env = (k: string) => Deno.env.get(k);
-const EARLY_ACCESS = env('LIFEBOX_EARLY_ACCESS') !== 'false';
+const EARLY_ACCESS = env('ZAROORI_EARLY_ACCESS') !== 'false';
 const messenger = createMessenger(env);
 const admin = () => createClient(env('SUPABASE_URL')!, env('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
 
 const SETTINGS_COLS = 'user_id, plan, phone, timezone, last_digest_on, notifications';
-const APP_URL = (env('LIFEBOX_APP_URL') ?? 'https://lifebox.app').replace(/\/$/, '');
+const APP_URL = (env('ZAROORI_APP_URL') ?? 'https://zaroori.app').replace(/\/$/, '');
 
 interface ReminderRow {
   id: string;
@@ -172,7 +172,7 @@ async function runSchedule(sb: SupabaseClient, now: Date) {
 
 async function runTest(sb: SupabaseClient, userId: string) {
   const since = new Date(Date.now() - 60_000).toISOString();
-  const { count } = await sb.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('title', 'LifeBox test').gte('created_at', since);
+  const { count } = await sb.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('title', 'Zaroori test').gte('created_at', since);
   if ((count ?? 0) > 0) return { status: 429, body: { error: 'Please wait a minute before sending another test.' } };
 
   const { data: s } = await sb.from('user_settings').select(SETTINGS_COLS).eq('user_id', userId).maybeSingle();
@@ -190,12 +190,12 @@ async function runTest(sb: SupabaseClient, userId: string) {
     }
     results[channel] = await messenger.send(channel, to, {
       channel,
-      subject: 'LifeBox test',
+      subject: 'Zaroori test',
       lines: ['This is a test reminder. If you can read it, you’re all set.'],
-      text: 'LifeBox test: if you can read this, reminders will reach you here.',
+      text: 'Zaroori test: if you can read this, reminders will reach you here.',
     });
   }
-  await sb.from('notifications').insert({ id: crypto.randomUUID(), user_id: userId, title: 'LifeBox test', body: JSON.stringify(results), channel: 'in_app', read_at: new Date().toISOString() });
+  await sb.from('notifications').insert({ id: crypto.randomUUID(), user_id: userId, title: 'Zaroori test', body: JSON.stringify(results), channel: 'in_app', read_at: new Date().toISOString() });
   return { status: 200, body: { results } };
 }
 

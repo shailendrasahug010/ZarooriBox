@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>LifeBox</string>
+        <string>Zaroori</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -23,17 +23,17 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>LifeBox uses the microphone so you can add things by speaking.</string>
+	<string>Zaroori uses the microphone so you can add things by speaking.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>LifeBox turns what you say into reminders and list items.</string>
+	<string>Zaroori turns what you say into reminders and list items.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>app.lifebox</string>
+			<string>app.zaroori</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>app.lifebox</string>
+				<string>app.zaroori</string>
 			</array>
 		</dict>
 	</array>

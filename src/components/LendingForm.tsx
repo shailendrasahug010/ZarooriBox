@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { Lending } from '../types';
 import { useData, useStore } from '../store/DataProvider';
-import { ValidationError } from '../store/LifeBoxStore';
+import { ValidationError } from '../store/ZarooriStore';
 import type { FieldErrors, LendingInput } from '../store/memoryInput';
 import { addDays, todayISO } from '../lib/dates';
 import { Modal } from './Modal';

@@ -12,14 +12,14 @@ const REMINDERS = [
 
 const FEATURES = [
   { emoji: '🎙️', title: 'Just say it', body: 'Add by voice in Hindi, English and 10 more Indian languages.' },
-  { emoji: '📷', title: 'Snap a document', body: 'LifeBox reads the expiry or due date for you.' },
+  { emoji: '📷', title: 'Snap a document', body: 'Zaroori reads the expiry or due date for you.' },
   { emoji: '👨‍👩‍👧', title: 'Share with family', body: 'One list for the house, reminders for everyone.' },
   { emoji: '🔔', title: 'Never miss it', body: 'Alerts on your phone, in email and on WhatsApp.' },
 ];
 
 const WORDS = ['bills', 'renewals', 'birthdays', 'warranties', 'services', 'things you lent'];
 
-/** The LifeBox logo: the box bobs gently while a few sparks fly out of it. */
+/** The Zaroori logo: the calendar bobs gently while its bell gives off a few sparks. */
 export function AnimatedLogo({ size = 'size-12', light = false }: { size?: string; light?: boolean }) {
   return (
     <span className="inline-flex items-center gap-3">
@@ -38,7 +38,7 @@ export function AnimatedLogo({ size = 'size-12', light = false }: { size?: strin
         ))}
       </span>
       <span className={`text-[1.4rem] font-extrabold tracking-tight ${light ? 'text-white' : 'text-ink'}`}>
-        Life<span className={light ? 'text-sky-200' : 'text-blue-600'}>Box</span>
+        <span className={light ? 'text-sky-200' : 'text-blue-600'}>Z</span>aroori
       </span>
     </span>
   );
@@ -106,11 +106,11 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
       <header className="relative overflow-hidden rounded-b-[2rem] bg-gradient-to-br from-brand-800 via-brand-700 to-brand-600 pb-6 pt-[calc(env(safe-area-inset-top)+1.25rem)] text-white lg:hidden">
         <Blobs />
         <div className="relative px-5">
-          <Link to="/" aria-label="LifeBox home" className="inline-flex rounded-xl animate-fade-up">
+          <Link to="/" aria-label="Zaroori home" className="inline-flex rounded-xl animate-fade-up">
             <AnimatedLogo light size="size-12" />
           </Link>
           <p className="mt-4 text-[1.6rem] font-extrabold leading-tight tracking-tight animate-fade-up" style={{ animationDelay: '80ms' }}>
-            Everything you don’t want to forget.
+            Everything important, in one place.
           </p>
           <RotatingLine className="mt-1.5 text-[1.02rem] text-brand-100 animate-fade-up" />
         </div>
@@ -126,12 +126,12 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
       {/* Computer: the full story beside the form. */}
       <aside className="relative hidden overflow-hidden bg-gradient-to-br from-brand-800 via-brand-700 to-brand-600 px-12 py-10 text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
         <Blobs />
-        <Link to="/" aria-label="LifeBox home" className="relative inline-flex self-start rounded-xl animate-fade-up">
+        <Link to="/" aria-label="Zaroori home" className="relative inline-flex self-start rounded-xl animate-fade-up">
           <AnimatedLogo light />
         </Link>
         <div className="relative mt-10 max-w-lg">
           <p className="text-[2.6rem] font-extrabold leading-[1.1] tracking-tight animate-fade-up" style={{ animationDelay: '80ms' }}>
-            Everything you don’t want to forget.
+            Everything important, in one place.
           </p>
           <RotatingLine className="mt-3 text-xl text-brand-100 animate-fade-up" />
           <p className="mt-3 text-brand-100/90 animate-fade-up" style={{ animationDelay: '160ms' }}>
@@ -176,9 +176,9 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
         <div className="m-auto w-full max-w-sm">
           <img
             src="/logo.png"
-            alt="LifeBox: Everything you don’t want to forget."
-            width={567}
-            height={600}
+            alt="Zaroori: Everything important, in one place."
+            width={600}
+            height={562}
             className="mx-auto mb-6 h-auto w-44 animate-pop drop-shadow-[0_12px_24px_rgb(29_111_242/0.18)] sm:w-48"
             draggable={false}
           />
@@ -194,7 +194,7 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
               {footer}
             </div>
           )}
-          {/* Phone: what LifeBox does, below the form. */}
+          {/* Phone: what Zaroori does, below the form. */}
           <ul className="mt-9 grid grid-cols-2 gap-2.5 lg:hidden">
             {FEATURES.map((f, i) => (
               <li key={f.title} className="rounded-2xl bg-surface p-3 shadow-card animate-fade-up" style={{ animationDelay: `${360 + i * 80}ms` }}>

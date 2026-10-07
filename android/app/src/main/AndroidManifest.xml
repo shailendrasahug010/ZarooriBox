@@ -19,16 +19,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- app.lifebox:// links: Google sign-in return (auth-callback) and the
+            <!-- app.zaroori:// links: Google sign-in return (auth-callback) and the
                  home-screen shortcuts (add, scan, shopping, share, act) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="app.lifebox" />
+                <data android:scheme="app.zaroori" />
             </intent-filter>
 
-            <!-- Share to LifeBox from WhatsApp, Gallery, SMS and other apps -->
+            <!-- Share to Zaroori from WhatsApp, Gallery, SMS and other apps -->
             <intent-filter android:label="@string/share_label">
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -57,7 +57,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Voice Quick Add -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- Reminders that arrive while LifeBox is closed -->
+    <!-- Reminders that arrive while Zaroori is closed -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />

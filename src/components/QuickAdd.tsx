@@ -309,7 +309,7 @@ export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = fals
         </button>
       </div>
       <p id={hintId} className="sr-only">
-        Type or say a sentence like “Car insurance expires 12 February 2027”. LifeBox works out the date, category and reminder. Press Enter to save.
+        Type or say a sentence like “Car insurance expires 12 February 2027”. Zaroori works out the date, category and reminder. Press Enter to save.
       </p>
       {preview && (
         <>

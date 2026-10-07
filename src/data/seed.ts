@@ -164,7 +164,7 @@ export function buildSeed(userId: ID): UserData {
       {
         id: uid('ntf'),
         userId,
-        title: 'Welcome to LifeBox 👋',
+        title: 'Welcome to Zaroori 👋',
         body: 'This demo is filled with sample memories. Try the Quick Add box: "Bike insurance expires on 17 November".',
         channel: 'in_app',
         createdAt: stamp(1),

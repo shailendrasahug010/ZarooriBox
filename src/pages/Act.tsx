@@ -6,7 +6,7 @@ import { useUI } from '../components/UIProvider';
 import { Logo } from '../components/ui';
 import { getSupabase, isSupabaseConfigured } from '../data/supabase';
 import { useT } from '../i18n';
-import type { ReminderAction } from '../store/LifeBoxStore';
+import type { ReminderAction } from '../store/ZarooriStore';
 import { useStore } from '../store/DataProvider';
 
 const ACTIONS: ReminderAction[] = ['done', 'tomorrow', 'week'];

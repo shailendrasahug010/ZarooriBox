@@ -8,7 +8,7 @@ import type { AuthEvent, AuthService } from './types';
 import { createLocalAuth } from './localAuth';
 
 /** Deep link the phone app registers (android/ios projects). Add it to Supabase Auth → URL configuration. */
-export const NATIVE_AUTH_CALLBACK = 'app.lifebox://auth-callback';
+export const NATIVE_AUTH_CALLBACK = 'app.zaroori://auth-callback';
 
 let nativeListenerReady = false;
 
@@ -35,7 +35,7 @@ const toUser = (u: SbUser): User => ({
 });
 
 /** Set while the on-device demo is in use (guest sign-in switched off on the server). */
-const DEVICE_DEMO = 'lifebox:v1:device-demo';
+const DEVICE_DEMO = 'zaroori:v1:device-demo';
 
 function deviceDemoOn(): boolean {
   try {
@@ -111,7 +111,7 @@ export function createSupabaseAuth(): AuthService {
       return toUser(data.user!);
     },
     async signInWithGoogle() {
-      if ((await providers())?.google === false) throw new AuthError('Google sign-in isn’t switched on for LifeBox yet. Use your email instead.');
+      if ((await providers())?.google === false) throw new AuthError('Google sign-in isn’t switched on for Zaroori yet. Use your email instead.');
       if (Capacitor.isNativePlatform()) {
         // Google blocks sign-in inside embedded web views, so use the system browser.
         listenForNativeCallback();

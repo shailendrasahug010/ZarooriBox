@@ -1,4 +1,4 @@
-package app.lifebox;
+package app.zaroori;
 
 import android.content.Intent;
 import android.net.Uri;
@@ -10,8 +10,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * "Share to LifeBox": Android hands shared text or photos over as ACTION_SEND.
- * They are turned into an app.lifebox://share link before Capacitor sees the intent,
+ * "Share to Zaroori": Android hands shared text or photos over as ACTION_SEND.
+ * They are turned into an app.zaroori://share link before Capacitor sees the intent,
  * so the web app's /app/share page handles them like any other deep link.
  */
 public class MainActivity extends BridgeActivity {
@@ -34,7 +34,7 @@ public class MainActivity extends BridgeActivity {
     private Intent fromShare(Intent intent) {
         if (intent == null || !Intent.ACTION_SEND.equals(intent.getAction())) return null;
         String type = intent.getType() == null ? "" : intent.getType();
-        Uri.Builder link = new Uri.Builder().scheme("app.lifebox").authority("share");
+        Uri.Builder link = new Uri.Builder().scheme("app.zaroori").authority("share");
 
         if (type.startsWith("image/")) {
             Uri stream = intent.getParcelableExtra(Intent.EXTRA_STREAM);

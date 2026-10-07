@@ -34,7 +34,7 @@ export const VOICE_LANGUAGES: { tag: string; label: string }[] = [
   { tag: 'en-GB', label: 'English (UK)' },
 ];
 
-const KEY = 'lifebox:v1:language';
+const KEY = 'zaroori:v1:language';
 let current: AppLanguage = read();
 if (typeof document !== 'undefined') document.documentElement.lang = current;
 const listeners = new Set<() => void>();

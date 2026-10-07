@@ -16,7 +16,7 @@ export function memoryStore(): KeyValueStore {
   };
 }
 
-export const dataKey = (userId: ID) => `lifebox:v1:data:${userId}`;
+export const dataKey = (userId: ID) => `zaroori:v1:data:${userId}`;
 
 /** Inline file limit in local mode, so localStorage (≈5 MB) doesn't fill up. */
 export const LOCAL_FILE_LIMIT = 1_500_000;

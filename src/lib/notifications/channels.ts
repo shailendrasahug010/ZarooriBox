@@ -13,7 +13,7 @@ export interface NotificationPayload {
   target?: { kind: 'memory' | 'lending'; id: string };
 }
 
-/** server: delivered by LifeBox's servers. needs_cloud: needs a cloud (Supabase) account; the local-only version has no server. */
+/** server: delivered by Zaroori's servers. needs_cloud: needs a cloud (Supabase) account; the local-only version has no server. */
 export type ChannelStatus = 'ready' | 'needs_permission' | 'blocked' | 'unsupported' | 'server' | 'needs_cloud';
 
 /**
@@ -34,7 +34,7 @@ export interface NotificationChannel {
 export const browserChannel: NotificationChannel = {
   id: 'browser',
   label: 'Browser notifications',
-  description: 'A pop-up on this device when something is due, while LifeBox is open.',
+  description: 'A pop-up on this device when something is due, while Zaroori is open.',
   status() {
     if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
     if (Notification.permission === 'granted') return 'ready';

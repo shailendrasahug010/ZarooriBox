@@ -55,7 +55,7 @@ export interface QuickAddResult {
 }
 
 /** Device-only record of in-app alerts for shared items owned by someone else, so we never write their rows. */
-const SEEN_KEY = (uid: ID) => `lifebox:v1:seen-shared:${uid}`;
+const SEEN_KEY = (uid: ID) => `zaroori:v1:seen-shared:${uid}`;
 function readSeen(uid: ID): Record<string, string> {
   try {
     return JSON.parse(globalThis.localStorage?.getItem(SEEN_KEY(uid)) ?? '{}') as Record<string, string>;
@@ -80,7 +80,7 @@ const clean = (s?: string) => {
  * Framework-free state container for one signed-in user. React subscribes to
  * it; tests drive it directly. Writes are optimistic and roll back on failure.
  */
-export class LifeBoxStore {
+export class ZarooriStore {
   private data: UserData = structuredClone(EMPTY_DATA);
   private listeners = new Set<() => void>();
   private readonly repo: Repository;
@@ -269,7 +269,7 @@ export class LifeBoxStore {
       throw new Error('You’ve reached the recurring item limit on the Free plan.');
     }
     if (input.newFiles?.length && !can(plan, 'attachments')) {
-      throw new Error('Attachments are part of LifeBox Pro.');
+      throw new Error('Attachments are part of Zaroori Pro.');
     }
   }
 
@@ -792,7 +792,7 @@ export class LifeBoxStore {
   // ---------- Family ----------
 
   private familyService() {
-    if (!this.repo.family) throw new Error('Family sharing needs a LifeBox cloud account.');
+    if (!this.repo.family) throw new Error('Family sharing needs a Zaroori cloud account.');
     return this.repo.family;
   }
 

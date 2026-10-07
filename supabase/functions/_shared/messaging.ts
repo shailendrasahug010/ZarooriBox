@@ -2,7 +2,7 @@
 // secrets (set with `supabase secrets set ...`); a channel without secrets is
 // reported as not configured and skipped, so the rest still deliver.
 //
-//   Email     Resend          RESEND_API_KEY, RESEND_FROM ("LifeBox <reminders@yourdomain.com>")
+//   Email     Resend          RESEND_API_KEY, RESEND_FROM ("Zaroori <reminders@yourdomain.com>")
 //   WhatsApp  Meta Cloud API  WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_TEMPLATE,
 //                             WHATSAPP_TEMPLATE_LANG (default "en")
 //   SMS       Twilio          TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM
@@ -43,8 +43,8 @@ export function emailHtml(to: Recipient, msg: PlannedMessage, appUrl: string): s
   <p style="font-size:16px">Hi ${escapeHtml(to.name || 'there')},</p>
   <p style="font-size:16px">Here’s what needs your attention:</p>
   <ul style="font-size:16px;padding-left:20px">${items}</ul>
-  <p><a href="${escapeHtml(appUrl)}/app" style="display:inline-block;background:#17745D;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:600">Open LifeBox</a></p>
-  <p style="font-size:12px;color:#78716c">You get this because email reminders are on in LifeBox settings.</p>
+  <p><a href="${escapeHtml(appUrl)}/app" style="display:inline-block;background:#17745D;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:600">Open Zaroori</a></p>
+  <p style="font-size:12px;color:#78716c">You get this because email reminders are on in Zaroori settings.</p>
 </div>`;
 }
 
@@ -55,7 +55,7 @@ export function whatsappParam(text: string): string {
 
 export function createMessenger(env: Env, http: Fetch = fetch): Messenger {
   const has = (...keys: string[]) => keys.every((k) => !!env(k));
-  const appUrl = env('LIFEBOX_APP_URL') ?? 'https://lifebox.app';
+  const appUrl = env('ZAROORI_APP_URL') ?? 'https://zaroori.app';
 
   const configured = (c: ExternalChannel) =>
     c === 'email'
@@ -89,7 +89,7 @@ export function createMessenger(env: Env, http: Fetch = fetch): Messenger {
       if (!to.phone) return { ok: false, error: 'no phone number' };
       if (channel === 'whatsapp') {
         // Business-initiated WhatsApp messages must use an approved template. Create one
-        // with a single body variable, e.g. "LifeBox reminder: {{1}}".
+        // with a single body variable, e.g. "Zaroori reminder: {{1}}".
         return post(`https://graph.facebook.com/v21.0/${env('WHATSAPP_PHONE_NUMBER_ID')}/messages`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${env('WHATSAPP_TOKEN')}`, 'Content-Type': 'application/json' },

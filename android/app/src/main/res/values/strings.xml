@@ -1,14 +1,14 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">LifeBox</string>
-    <string name="title_activity_main">LifeBox</string>
-    <string name="package_name">app.lifebox</string>
-    <string name="custom_url_scheme">app.lifebox</string>
+    <string name="app_name">Zaroori</string>
+    <string name="title_activity_main">Zaroori</string>
+    <string name="package_name">app.zaroori</string>
+    <string name="custom_url_scheme">app.zaroori</string>
     <string name="shortcut_voice_short">Add by voice</string>
     <string name="shortcut_voice_long">Add a reminder by voice</string>
     <string name="shortcut_scan_short">Scan document</string>
     <string name="shortcut_scan_long">Scan a bill or document</string>
     <string name="shortcut_shopping_short">Shopping list</string>
     <string name="shortcut_shopping_long">Open the shopping list</string>
-    <string name="share_label">Add to LifeBox</string>
+    <string name="share_label">Add to Zaroori</string>
 </resources>

@@ -1,5 +1,5 @@
 // What the Done / Tomorrow / Next week buttons in a reminder email do, on the server.
-// Mirrors LifeBoxStore.act() in the app: Done on a repeating item rolls it to the next
+// Mirrors ZarooriStore.act() in the app: Done on a repeating item rolls it to the next
 // date instead of finishing it; snoozing moves the reminder (or follow-up) date.
 
 export type Action = 'done' | 'tomorrow' | 'week';

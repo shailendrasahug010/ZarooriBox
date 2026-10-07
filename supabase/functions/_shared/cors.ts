@@ -1,5 +1,5 @@
 // Browsers call these functions from the app's own origin. Set ALLOWED_ORIGIN to
-// your site (e.g. https://lifebox.app) in production; "*" is fine for local dev.
+// your site (e.g. https://zaroori.app) in production; "*" is fine for local dev.
 export const corsHeaders = {
   'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

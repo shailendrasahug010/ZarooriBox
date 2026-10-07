@@ -7,7 +7,7 @@ import type { ISODate, UserData, UserSettings } from '../../types';
 import type { ChannelStatus, NotificationChannel } from './channels';
 
 // Phone-app notifications. Unlike browser pop-ups, these are scheduled with the
-// operating system, so they arrive at the chosen time even when LifeBox is closed.
+// operating system, so they arrive at the chosen time even when Zaroori is closed.
 
 /** iOS keeps at most 64 pending notifications per app; stay under it. */
 const MAX_SCHEDULED = 60;
@@ -22,8 +22,8 @@ export interface PlannedLocalNotification {
   target: { kind: 'memory' | 'lending'; id: string };
 }
 
-/** Buttons shown on every LifeBox reminder notification. */
-export const ACTION_TYPE = 'lifebox-reminder';
+/** Buttons shown on every Zaroori reminder notification. */
+export const ACTION_TYPE = 'zaroori-reminder';
 
 /** Stable 31-bit id from a string, so rescheduling replaces rather than duplicates. */
 export function notificationId(key: string): number {
@@ -84,7 +84,7 @@ let cachedStatus: ChannelStatus = 'needs_permission';
 export const nativeChannel: NotificationChannel = {
   id: 'browser',
   label: 'Phone notifications',
-  description: 'Alerts on this phone at your chosen time, even when LifeBox is closed.',
+  description: 'Alerts on this phone at your chosen time, even when Zaroori is closed.',
   status: () => cachedStatus,
   async requestAccess() {
     const r = await LocalNotifications.requestPermissions();
@@ -109,7 +109,7 @@ export async function refreshNativeStatus(): Promise<ChannelStatus> {
   return cachedStatus;
 }
 
-/** Replaces everything LifeBox has scheduled on this phone with the current plan. */
+/** Replaces everything Zaroori has scheduled on this phone with the current plan. */
 export async function syncNativeSchedule(data: UserData, settings: UserSettings): Promise<number> {
   if (!isNativeApp()) return 0;
   const pending = await LocalNotifications.getPending();

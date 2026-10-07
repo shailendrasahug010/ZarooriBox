@@ -1,7 +1,7 @@
-// LifeBox service worker: makes the installed app open instantly and work offline.
+// Zaroori service worker: makes the installed app open instantly and work offline.
 // Pages: network first, falling back to the cached app shell. Built assets (hashed
 // file names): cache first. Supabase and other cross-origin calls are never cached.
-const VERSION = 'lifebox-v3';
+const VERSION = 'zaroori-v3';
 const SHELL = ['/', '/manifest.webmanifest', '/favicon.png', '/logo-mark.png', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -52,7 +52,7 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// Tapping a notification opens (or focuses) LifeBox. The Done / Tomorrow buttons and
+// Tapping a notification opens (or focuses) Zaroori. The Done / Tomorrow buttons and
 // taps on a single-item reminder go to /app/act, which runs the action in the app.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();

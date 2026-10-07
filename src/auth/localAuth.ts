@@ -10,12 +10,12 @@ interface StoredUser extends User {
   passwordHash: string;
 }
 
-const USERS = 'lifebox:v1:users';
-const SESSION = 'lifebox:v1:session';
-const RESETS = 'lifebox:v1:resets';
-const ATTEMPTS = 'lifebox:v1:login-attempts';
+const USERS = 'zaroori:v1:users';
+const SESSION = 'zaroori:v1:session';
+const RESETS = 'zaroori:v1:resets';
+const ATTEMPTS = 'zaroori:v1:login-attempts';
 
-export const DEMO_EMAIL = 'demo@lifebox.app';
+export const DEMO_EMAIL = 'demo@zaroori.app';
 const SESSION_DAYS = 30;
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 60_000;
@@ -27,7 +27,7 @@ const publicUser = ({ salt: _s, passwordHash: _p, ...u }: StoredUser): User => {
 };
 
 /**
- * Browser-only accounts for running LifeBox without a backend. Passwords are
+ * Browser-only accounts for running Zaroori without a backend. Passwords are
  * salted and hashed, sessions expire, and repeated wrong passwords lock the
  * account briefly. Real deployments should use Supabase Auth (see supabaseAuth.ts).
  */

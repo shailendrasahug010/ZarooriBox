@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Copy, LogOut, Share2, Users } from 'lucide-react';
 import { useT } from '../i18n';
 import { useData, useStore } from '../store/DataProvider';
-import { ValidationError } from '../store/LifeBoxStore';
+import { ValidationError } from '../store/ZarooriStore';
 import { ConfirmDialog } from './Modal';
 import { useToast } from './Toast';
 import { Field } from './ui';
@@ -81,7 +81,7 @@ export function FamilySettings() {
   const shareInvite = async () => {
     try {
       if (navigator.share) {
-        await navigator.share({ title: 'LifeBox', text: inviteText });
+        await navigator.share({ title: 'Zaroori', text: inviteText });
         return;
       }
     } catch {

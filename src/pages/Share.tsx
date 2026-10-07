@@ -15,7 +15,7 @@ export function sharedText(params: URLSearchParams): string {
 }
 
 /**
- * "Share to LifeBox" from WhatsApp, Gallery, SMS and others lands here.
+ * "Share to Zaroori" from WhatsApp, Gallery, SMS and others lands here.
  * Text goes into Quick Add; a photo goes to document scanning.
  * Android passes shared photos as a file in the app's cache (see MainActivity).
  */

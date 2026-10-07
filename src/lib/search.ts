@@ -28,7 +28,7 @@ function rank<T>(rows: T[], title: (r: T) => string, hay: (r: T) => string, toke
     .map((x) => x.r);
 }
 
-/** Searches every LifeBox record. All words must match somewhere in the record. */
+/** Searches every Zaroori record. All words must match somewhere in the record. */
 export function searchAll(query: string, memories: MemoryView[], lendings: LendingView[], shopping: ShoppingItem[]): SearchResults {
   const tokens = norm(query).split(/\s+/).filter(Boolean);
   if (!tokens.length) return { memories: [], lendings: [], shopping: [], total: 0 };

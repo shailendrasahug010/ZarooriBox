@@ -121,7 +121,7 @@ export default function Landing() {
       </a>
       <header className="sticky top-0 z-30 border-b border-line/60 bg-paper/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
         <nav className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:px-6" aria-label="Main">
-          <Link to="/" aria-label="LifeBox home">
+          <Link to="/" aria-label="Zaroori home">
             <Logo />
           </Link>
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
@@ -133,7 +133,7 @@ export default function Landing() {
             </a>
             {user ? (
               <Link to="/app" className="btn btn-primary btn-sm">
-                Open LifeBox
+                Open Zaroori
               </Link>
             ) : (
               <>
@@ -154,11 +154,11 @@ export default function Landing() {
         <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-12 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:pb-24 lg:pt-20">
           <div className="animate-fade-up">
             <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-700">
-              <span aria-hidden="true">📦</span> Everything you don’t want to forget.
+              <span aria-hidden="true">🔔</span> Everything important, in one place.
             </p>
             <h1 className="text-[2.6rem] font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
               Don’t remember everything.
-              <span className="block text-brand-600">Let LifeBox remember it for you.</span>
+              <span className="block text-brand-600">Let Zaroori remember it for you.</span>
             </h1>
             <p className="mt-5 max-w-xl text-lg text-ink-soft">
               Bills. Renewals. Home maintenance. Shopping. Things you lent. Important dates. Everything you don’t want to forget — in one simple place.
@@ -200,9 +200,9 @@ export default function Landing() {
             </div>
             <div>
               <p className="text-sm font-bold uppercase tracking-wider text-brand-600">The fix</p>
-              <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">LifeBox keeps them in one place.</h2>
+              <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Zaroori keeps them in one place.</h2>
               <p className="mt-4 text-ink-soft">
-                Type it like you’d say it. LifeBox figures out the date, the category and when to nudge you. Then it stays quiet until it matters. No projects, no boards, no productivity
+                Type it like you’d say it. Zaroori figures out the date, the category and when to nudge you. Then it stays quiet until it matters. No projects, no boards, no productivity
                 guilt.
               </p>
             </div>
@@ -233,8 +233,8 @@ export default function Landing() {
             <ol className="mt-10 grid gap-5 md:grid-cols-3">
               {[
                 { n: 1, t: 'Add something', b: '“Car insurance expires 12 Feb 2027.” One line, in your own words.' },
-                { n: 2, t: 'Set when you need it', b: 'LifeBox suggests the date, category and a sensible reminder. Change anything you like.' },
-                { n: 3, t: 'LifeBox reminds you', b: 'A calm nudge at the right time. Repeating things roll forward on their own.' },
+                { n: 2, t: 'Set when you need it', b: 'Zaroori suggests the date, category and a sensible reminder. Change anything you like.' },
+                { n: 3, t: 'Zaroori reminds you', b: 'A calm nudge at the right time. Repeating things roll forward on their own.' },
               ].map((s) => (
                 <li key={s.n} className="rounded-3xl bg-white/[0.07] p-6 ring-1 ring-white/10">
                   <span className="grid size-10 place-items-center rounded-full bg-white text-lg font-extrabold text-brand-700">{s.n}</span>
@@ -255,7 +255,7 @@ export default function Landing() {
               </span>
               <h2 className="mt-5 text-3xl font-extrabold tracking-tight sm:text-4xl">Your life is private. We keep it that way.</h2>
               <p className="mt-4 text-ink-soft">
-                Passport dates, money you lent, your mother’s birthday. This is personal. LifeBox is built so only you can see your data, and we earn money from a simple optional plan, never
+                Passport dates, money you lent, your mother’s birthday. This is personal. Zaroori is built so only you can see your data, and we earn money from a simple optional plan, never
                 from ads or selling information.
               </p>
             </div>
@@ -296,7 +296,7 @@ export default function Landing() {
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-8 text-sm text-muted sm:flex-row sm:px-6">
           <Logo />
-          <p>Everything you don’t want to forget. © {new Date().getFullYear()} LifeBox</p>
+          <p>Everything important, in one place. © {new Date().getFullYear()} Zaroori</p>
         </div>
       </footer>
     </div>

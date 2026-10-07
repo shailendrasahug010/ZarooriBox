@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Long-press the LifeBox icon: Add by voice, Scan a document, Shopping list. -->
+<!-- Long-press the Zaroori icon: Add by voice, Scan a document, Shopping list. -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
         android:shortcutId="add_by_voice"
@@ -9,9 +9,9 @@
         android:shortcutLongLabel="@string/shortcut_voice_long">
         <intent
             android:action="android.intent.action.VIEW"
-            android:data="app.lifebox://add?voice=1"
-            android:targetPackage="app.lifebox"
-            android:targetClass="app.lifebox.MainActivity" />
+            android:data="app.zaroori://add?voice=1"
+            android:targetPackage="app.zaroori"
+            android:targetClass="app.zaroori.MainActivity" />
     </shortcut>
     <shortcut
         android:shortcutId="scan_document"
@@ -21,9 +21,9 @@
         android:shortcutLongLabel="@string/shortcut_scan_long">
         <intent
             android:action="android.intent.action.VIEW"
-            android:data="app.lifebox://scan"
-            android:targetPackage="app.lifebox"
-            android:targetClass="app.lifebox.MainActivity" />
+            android:data="app.zaroori://scan"
+            android:targetPackage="app.zaroori"
+            android:targetClass="app.zaroori.MainActivity" />
     </shortcut>
     <shortcut
         android:shortcutId="shopping_list"
@@ -33,8 +33,8 @@
         android:shortcutLongLabel="@string/shortcut_shopping_long">
         <intent
             android:action="android.intent.action.VIEW"
-            android:data="app.lifebox://shopping"
-            android:targetPackage="app.lifebox"
-            android:targetClass="app.lifebox.MainActivity" />
+            android:data="app.zaroori://shopping"
+            android:targetPackage="app.zaroori"
+            android:targetClass="app.zaroori.MainActivity" />
     </shortcut>
 </shortcuts>
