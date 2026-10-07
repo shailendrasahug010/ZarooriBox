@@ -69,6 +69,21 @@ Only signed-in users can call it. Set `VITE_AI_QUICK_ADD=off` to use rules only.
 
 The same key powers **document scanning** (`supabase functions deploy scan-document`). Without it, a scanned photo is still attached and the person fills in the details.
 
+### Google Drive backup
+
+Every night the `drive-backup` function saves each person's items to a **ZarooriBox** folder in their own Google Drive. On a new phone they log in, open **Settings → Google Drive backup**, connect the same Google account and restore. ZarooriBox only asks for the `drive.file` permission, so it can see the files it created and nothing else in their Drive. The daily run never replaces a full backup with a nearly empty account (a new phone that hasn't restored yet); **Back up now** can. **Settings → Privacy & data → Restore from a file** restores an exported file the same way.
+
+1. In Google Cloud Console, enable the **Google Drive API**. Create an OAuth client (type *Web application*; you can reuse the Google sign-in one) and add `https://<project-ref>.supabase.co/functions/v1/drive-backup` as an authorised redirect URI.
+2. On the OAuth consent screen, add the scope `.../auth/drive.file`. It isn't a restricted scope, so no Google security review is needed.
+3. Set the secrets and deploy:
+
+```bash
+supabase secrets set GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=... ZAROORI_APP_URL=https://your-site
+supabase functions deploy drive-backup --no-verify-jwt   # it checks sign-in itself
+```
+
+Google sends people back only to the phone app or to `ZAROORI_APP_URL` / `ALLOWED_ORIGIN` (and localhost), and the signed-in app finishes the link, so nobody can attach someone else's Drive to their account. Refresh tokens are stored encrypted (with `DRIVE_TOKEN_KEY` if set, else the service role key) in `drive_backups`, which only the function can read. [`supabase/cron.sql`](supabase/cron.sql) schedules the nightly run at 03:00 India time.
+
 ### Family sharing
 
 Family sharing needs a Supabase account (it is hidden in the offline build). The tables, row-level security and the `create_household`, `join_household` and `leave_household` functions are in [`supabase/schema.sql`](supabase/schema.sql). Members can see and update items shared with their family; only the owner can stop sharing an item. Leaving a family makes your own items private again.

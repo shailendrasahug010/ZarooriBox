@@ -40,5 +40,7 @@ export function pathForDeepLink(url: string): string | null {
   if (screen === 'shopping') return '/app/shopping';
   if (screen === 'share') return `/app/share?${u.searchParams.toString()}`;
   if (screen === 'act') return `/app/act?${u.searchParams.toString()}`;
+  // Back from Google's consent page: Settings finishes connecting Google Drive.
+  if (screen === 'drive-callback') return `/app/settings?drive=1&${u.searchParams.toString()}`;
   return null;
 }

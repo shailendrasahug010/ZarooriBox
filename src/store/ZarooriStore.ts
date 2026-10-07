@@ -22,6 +22,7 @@ import { buildSeed, defaultSettings, deviceTimezone } from '../data/seed';
 import { addDays, diffDays, formatDate, nextOccurrenceAfter, todayISO } from '../lib/dates';
 import { capitalizeName, formatMoney, nowStamp, uid } from '../lib/format';
 import { can, limit } from '../lib/plans';
+import { backupCount, prepareRestore, restoredSettings, type Backup } from '../lib/backup';
 import { t } from '../i18n';
 import type { ParsedQuickAdd } from '../lib/parser';
 import { collectDueReminders, collectTimedAlerts, toNotification, type DueReminder } from '../lib/notifications/scheduler';
@@ -212,6 +213,20 @@ export class ZarooriStore {
     const settings = defaultSettings(this.uid);
     await this.repo.saveSettings(settings);
     this.set({ ...structuredClone(EMPTY_DATA), settings });
+  }
+
+  /**
+   * Replaces this account's items with the ones in a backup (Google Drive or an
+   * exported file). Returns how many items came back.
+   */
+  async restoreBackup(b: Backup): Promise<number> {
+    const rows = prepareRestore(b, this.uid);
+    const settings = { ...(this.data.settings ?? defaultSettings(this.uid)), ...restoredSettings(b), userId: this.uid, updatedAt: nowStamp() };
+    await this.repo.clearAll();
+    const data: UserData = { ...structuredClone(EMPTY_DATA), ...rows, settings, family: this.data.family };
+    await this.persistAll(data);
+    this.set(data);
+    return backupCount(b);
   }
 
   exportJSON(): string {
