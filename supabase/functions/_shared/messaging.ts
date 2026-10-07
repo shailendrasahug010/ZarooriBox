@@ -31,7 +31,7 @@ export interface Messenger {
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 export function emailHtml(to: Recipient, msg: PlannedMessage, appUrl: string): string {
-  const btn = 'color:#17745D;font-weight:600;text-decoration:none;margin-right:14px';
+  const btn = 'color:#0B5BD3;font-weight:600;text-decoration:none;margin-right:14px';
   const actions = (i: number) => {
     const link = msg.actionLinks?.[i];
     if (!link) return '';
@@ -43,7 +43,7 @@ export function emailHtml(to: Recipient, msg: PlannedMessage, appUrl: string): s
   <p style="font-size:16px">Hi ${escapeHtml(to.name || 'there')},</p>
   <p style="font-size:16px">Here’s what needs your attention:</p>
   <ul style="font-size:16px;padding-left:20px">${items}</ul>
-  <p><a href="${escapeHtml(appUrl)}/app" style="display:inline-block;background:#17745D;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:600">Open Zaroori</a></p>
+  <p><a href="${escapeHtml(appUrl)}/app" style="display:inline-block;background:#0B5BD3;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:600">Open Zaroori</a></p>
   <p style="font-size:12px;color:#78716c">You get this because email reminders are on in Zaroori settings.</p>
 </div>`;
 }

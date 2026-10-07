@@ -9,7 +9,7 @@ const config: CapacitorConfig = {
   android: { allowMixedContent: false },
   plugins: {
     SplashScreen: { launchShowDuration: 1500, launchAutoHide: false, backgroundColor: '#F7F5F2', showSpinner: false },
-    LocalNotifications: { smallIcon: 'ic_stat_zaroori', iconColor: '#17745D' },
+    LocalNotifications: { smallIcon: 'ic_stat_zaroori', iconColor: '#0B5BD3' },
   },
 };
 

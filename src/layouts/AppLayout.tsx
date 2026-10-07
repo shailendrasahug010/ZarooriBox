@@ -193,7 +193,7 @@ export function AppLayout() {
               to="/app/add"
               aria-label={t('nav.addMemory')}
               aria-current={path === '/app/add' ? 'page' : undefined}
-              className="-mt-6 grid size-[3.6rem] place-items-center rounded-[1.35rem] bg-brand-600 text-white shadow-[0_10px_24px_-8px_rgb(23_116_93/0.7)] ring-4 ring-paper transition active:scale-95"
+              className="-mt-6 grid size-[3.6rem] place-items-center rounded-[1.35rem] bg-brand-600 text-white shadow-[0_10px_24px_-8px_rgb(11_91_211/0.7)] ring-4 ring-paper transition active:scale-95"
             >
               <Plus className="size-7" strokeWidth={2.5} aria-hidden="true" />
             </Link>
