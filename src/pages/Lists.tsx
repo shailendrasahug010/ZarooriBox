@@ -17,7 +17,7 @@ export default function Lists() {
     { to: '/app/expiry', emoji: '⏰', title: 'Expiry Radar', meta: `${expiringSoon(memories).length} expiring` },
     { to: '/app/home-maintenance', emoji: '🏠', title: 'Home Maintenance', meta: `${active(memories).filter((m) => m.categoryId === 'home').length} tasks` },
     { to: '/app/calendar', emoji: '📅', title: 'Calendar', meta: 'Month view' },
-    { to: '/app/upcoming', emoji: '🗂️', title: 'All memories', meta: `${active(memories).length} active` },
+    { to: '/app/upcoming', emoji: '🗂️', title: 'All reminders', meta: `${active(memories).length} active` },
     { to: '/app/search', emoji: '🔍', title: 'Search', meta: 'Find anything' },
   ];
   return (

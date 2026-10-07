@@ -200,7 +200,7 @@ export function MemoryDetail({ id, onClose }: { id: string | null; onClose: () =
       </Modal>
       <ConfirmDialog
         open={confirm}
-        title="Delete this memory?"
+        title="Delete this reminder?"
         body={<>“{m.title}” and its reminders will be removed. You can undo right after.</>}
         confirmLabel="Delete"
         danger

@@ -166,7 +166,7 @@ export function AddMemory() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader title="Add a memory" subtitle="Type it in one line, or fill in the details below." />
+      <PageHeader title="Add a reminder" subtitle="Type it in one line, or fill in the details below." />
       {params.get('scan') === '1' && !scanFile && <ScanPicker onFile={(f) => { setScan(null); setScanFile(f); }} />}
       {scanning && (
         <div className="card mb-6 flex items-center gap-3 p-5" role="status" aria-busy="true">
@@ -196,7 +196,7 @@ export function AddMemory() {
           shareWith={family?.name}
           errors={errors}
           saving={saving}
-          submitLabel="Save memory"
+          submitLabel="Save reminder"
           onCancel={() => navigate(-1)}
           onSubmit={async (input) => {
             const ok = await run(async () => {
@@ -224,12 +224,12 @@ export function EditMemory() {
   const [initial] = useState(() => (m ? fromView(m) : null));
 
   if (!m || !initial) {
-    return <EmptyState emoji="🔍" title="We couldn’t find that memory" body="It may have been deleted." />;
+    return <EmptyState emoji="🔍" title="We couldn’t find that reminder" body="It may have been deleted." />;
   }
 
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader title="Edit memory" subtitle={m.title} />
+      <PageHeader title="Edit reminder" subtitle={m.title} />
       <div className="card p-4 sm:p-6">
         <MemoryForm
           initial={initial}

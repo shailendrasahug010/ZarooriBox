@@ -4,6 +4,9 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { initPlatform } from './platform';
+import { initAppearance } from './lib/appearance';
+
+initAppearance();
 
 void initPlatform();
 

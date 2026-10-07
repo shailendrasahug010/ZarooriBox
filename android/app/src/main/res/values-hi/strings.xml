@@ -7,4 +7,11 @@
     <string name="shortcut_shopping_short">खरीदारी सूची</string>
     <string name="shortcut_shopping_long">खरीदारी की सूची खोलें</string>
     <string name="share_label">ZarooriBox में जोड़ें</string>
+    <string name="widget_title">ZarooriBox · आज</string>
+    <string name="widget_description">आज की दवाइयाँ और रिमाइंडर</string>
+    <string name="widget_add">रिमाइंडर जोड़ें</string>
+    <string name="widget_empty">आज कुछ बाकी नहीं 🎉</string>
+    <string name="widget_open_app">आज की सूची देखने के लिए ZarooriBox खोलें</string>
+    <string name="widget_overdue">देर हो गई</string>
+    <string name="widget_more">+ %1$d और</string>
 </resources>

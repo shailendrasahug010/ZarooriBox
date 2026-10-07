@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Crown, Download, LogOut, RotateCcw, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 import { ConfirmDialog } from '../components/Modal';
 import { useToast } from '../components/Toast';
-import { Field, PageHeader, Switch, cx } from '../components/ui';
+import { Field, PageHeader, Segmented, Switch, cx } from '../components/ui';
+import { readAppearance, saveAppearance, type Appearance, type TextSize, type Theme } from '../lib/appearance';
 import { CHANNELS, deviceChannel, sendServerTest, type ChannelStatus } from '../lib/notifications/channels';
 import { exactAlarmsAllowed, isNativeApp, refreshNativeStatus, scheduleTestNotification } from '../lib/notifications/native';
 import { openExactAlarmSetting } from '../lib/notifications/startup';
@@ -41,6 +42,61 @@ const STATUS_TEXT: Record<ChannelStatus, string> = {
 
 const CHANNEL_NAMES: Record<string, string> = { email: 'Email', whatsapp: 'WhatsApp', sms: 'SMS' };
 
+type Tab = 'general' | 'notifications' | 'family' | 'data';
+const TAB_OF_ANCHOR: Record<string, Tab> = { language: 'general', appearance: 'general', notifications: 'notifications', family: 'family', backup: 'data', data: 'data' };
+
+/** The tab a link points at: /app/settings#family, /app/settings?tab=data, or Google's Drive return. */
+function tabFor(hash: string, search: string): Tab {
+  const q = new URLSearchParams(search);
+  if (q.get('drive')) return 'data';
+  const t = q.get('tab');
+  if (t === 'general' || t === 'notifications' || t === 'family' || t === 'data') return t;
+  return TAB_OF_ANCHOR[hash.replace('#', '')] ?? 'general';
+}
+
+function AppearanceSettings() {
+  const t = useT();
+  const [look, setLook] = useState<Appearance>(readAppearance);
+  const change = (patch: Partial<Appearance>) => {
+    const next = { ...look, ...patch };
+    setLook(next);
+    saveAppearance(next);
+  };
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="mb-2 text-sm font-semibold text-ink-soft" id="text-size-label">
+          {t('set.textSize')}
+        </p>
+        <Segmented<TextSize>
+          label={t('set.textSize')}
+          value={look.textSize}
+          onChange={(textSize) => change({ textSize })}
+          options={[
+            { value: 'normal', label: t('set.textNormal') },
+            { value: 'large', label: t('set.textLarge') },
+            { value: 'xlarge', label: t('set.textXLarge') },
+          ]}
+        />
+        <p className="mt-2 text-sm text-muted">{t('set.textSizeHint')}</p>
+      </div>
+      <div>
+        <p className="mb-2 text-sm font-semibold text-ink-soft">{t('set.theme')}</p>
+        <Segmented<Theme>
+          label={t('set.theme')}
+          value={look.theme}
+          onChange={(theme) => change({ theme })}
+          options={[
+            { value: 'auto', label: t('set.themeAuto') },
+            { value: 'light', label: t('set.themeLight') },
+            { value: 'dark', label: t('set.themeDark') },
+          ]}
+        />
+      </div>
+    </div>
+  );
+}
+
 
 export default function Settings() {
   const { user, signOut, updateProfile, deleteAccount } = useAuth();
@@ -49,6 +105,9 @@ export default function Settings() {
   const toast = useToast();
   const navigate = useNavigate();
   const t = useT();
+  const location = useLocation();
+  const [tab, setTab] = useState<Tab>(() => tabFor(location.hash, location.search));
+  useEffect(() => setTab(tabFor(location.hash, location.search)), [location.hash, location.search]);
   const settings = data.settings ?? store.settings;
   const [name, setName] = useState(user?.name ?? '');
   const [nameError, setNameError] = useState('');
@@ -179,6 +238,25 @@ export default function Settings() {
     <div className="mx-auto max-w-2xl space-y-5">
       <PageHeader title={t('set.title')} subtitle={user?.email} />
 
+      <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+        <Segmented<Tab>
+          label={t('set.title')}
+          value={tab}
+          onChange={(v) => {
+            setTab(v);
+            navigate({ search: v === 'general' ? '' : `?tab=${v}`, hash: '' }, { replace: true });
+          }}
+          options={[
+            { value: 'general', label: t('set.tabGeneral') },
+            { value: 'notifications', label: t('set.tabNotifications') },
+            { value: 'family', label: t('set.tabFamily') },
+            { value: 'data', label: t('set.tabData') },
+          ]}
+        />
+      </div>
+
+      {tab === 'general' && (
+      <>
       <Section title="Profile">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <Field label="Your name" htmlFor="set-name" error={nameError} className="flex-1">
@@ -229,10 +307,20 @@ export default function Settings() {
         </div>
       </Section>
 
+      <Section id="appearance" title={t('set.appearance')} description={t('set.appearanceDesc')}>
+        <AppearanceSettings />
+      </Section>
+      </>
+      )}
+
+      {tab === 'family' && (
       <Section id="family" title={t('fam.title')} description={t('fam.description')}>
         <FamilySettings />
       </Section>
 
+      )}
+
+      {tab === 'notifications' && (
       <Section id="notifications" title="Notifications" description="How ZarooriBox reaches you when something is due.">
         <ul className="divide-y divide-line">
           <li className="flex items-center gap-4 py-3">
@@ -344,6 +432,9 @@ export default function Settings() {
         </div>
       </Section>
 
+      )}
+
+      {tab === 'general' && (
       <Section title="Your plan">
         <div className="grid gap-3 sm:grid-cols-2">
           {(['free', 'pro'] as const).map((p) => {
@@ -369,6 +460,10 @@ export default function Settings() {
         {EARLY_ACCESS && <p className="mt-3 rounded-xl bg-soon-bg px-3 py-2 text-sm text-soon">🎁 Early access: every Pro feature that exists today is unlocked for free.</p>}
       </Section>
 
+      )}
+
+      {tab === 'data' && (
+      <>
       <Section id="backup" title="Google Drive backup" description="A daily copy you can restore on any phone.">
         <DriveBackup />
       </Section>
@@ -403,6 +498,8 @@ export default function Settings() {
           )}
         </div>
       </Section>
+      </>
+      )}
 
       <button
         type="button"
@@ -447,7 +544,7 @@ export default function Settings() {
       <ConfirmDialog
         open={confirm === 'delete'}
         title="Delete everything?"
-        body="All memories, reminders, lists and people in your ZarooriBox will be permanently deleted. This can’t be undone."
+        body="All reminders, lists, people and files in your ZarooriBox will be permanently deleted. This can’t be undone."
         confirmLabel="Delete everything"
         danger
         onCancel={() => setConfirm(null)}

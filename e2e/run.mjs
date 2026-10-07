@@ -121,7 +121,7 @@ await step('Quick Add tidies a misspelt note and Undo in the pop-up removes it',
 
 await step('Add Memory form validation + create due-today item', async () => {
   await page.goto(`${BASE}/app/add`);
-  await page.getByRole('button', { name: 'Save memory' }).click();
+  await page.getByRole('button', { name: 'Save reminder' }).click();
   await page.getByText('Give it a name').waitFor();
   await page.fill('#mf-title', 'Electricity bill');
   await page.getByRole('button', { name: /Home/ }).first().click();
@@ -132,7 +132,7 @@ await step('Add Memory form validation + create due-today item', async () => {
   await page.getByRole('button', { name: 'More details' }).click();
   await page.fill('#mf-amount', '1840');
   await page.fill('#mf-notes', 'Pay via UPI');
-  await page.getByRole('button', { name: 'Save memory' }).click();
+  await page.getByRole('button', { name: 'Save reminder' }).click();
   await page.waitForURL(/\/app$/);
   await page.getByRole('region', { name: 'Due Today' }).getByText('Electricity bill').waitFor();
   await page.getByText('A few things need you today').waitFor();
@@ -192,7 +192,7 @@ await step('Delete an item with confirm, then undo', async () => {
 
 await step('Search across records', async () => {
   await page.goto(`${BASE}/app/search?q=insurance`);
-  await page.getByRole('region', { name: 'Memories' }).getByText('Car Insurance').waitFor();
+  await page.getByRole('region', { name: 'Reminders' }).getByText('Car Insurance').waitFor();
   await page.fill('#search-input', 'rahul');
   await page.getByRole('region', { name: 'People and things' }).getByText('Rahul owes me ₹2,000').waitFor();
   await page.fill('#search-input', 'zzzz');
@@ -337,6 +337,8 @@ await step('Language: switching to Hindi changes the screens, and back', async (
 
 await step('Family sharing explains it needs a cloud account in the offline build', async () => {
   await page.goto(`${BASE}/app/settings`);
+  await page.getByRole('tab', { name: 'Family' }).click();
+  await page.waitForURL(/tab=family/);
   await page.getByText('Family sharing works with a ZarooriBox cloud account').waitFor();
 });
 
@@ -368,12 +370,12 @@ await step('Backup: export from one account, restore from the file in another', 
   await demo.page.goto(`${BASE}/login`);
   await demo.page.getByRole('button', { name: /Try the demo/ }).click();
   await demo.page.waitForURL(/\/app/);
-  await demo.page.goto(`${BASE}/app/settings`);
+  await demo.page.goto(`${BASE}/app/settings?tab=data`);
   const [download] = await Promise.all([demo.page.waitForEvent('download'), demo.page.getByRole('button', { name: 'Export my data' }).click()]);
   const { readFile } = await import('node:fs/promises');
   const buffer = await readFile(await download.path());
   await demo.ctx.close();
-  await page.goto(`${BASE}/app/settings`);
+  await page.goto(`${BASE}/app/settings?tab=data`);
   await page.getByText('Google Drive backup needs a ZarooriBox cloud account.').waitFor();
   await page.setInputFiles('input[type=file][accept*="json"]', { name: 'backup.json', mimeType: 'application/json', buffer });
   await page.getByRole('heading', { name: 'Restore from this file?' }).waitFor();
@@ -452,6 +454,55 @@ await step('Voice keeps listening after a pause, so long sentences aren’t cut 
     throw new Error(`the box holds "${await p.inputValue('#quick-add-input')}"`);
   });
   await p.getByRole('button', { name: 'Add by voice' }).waitFor();
+  await v.ctx.close();
+});
+
+await step('Big mic on Home: hold, speak, let go, and it is saved', async () => {
+  const v = await newPage({ width: 390, height: 844 }, true);
+  const p = v.page;
+  await v.ctx.addInitScript(() => {
+    class FakeRecognition {
+      start() { setTimeout(() => this.onresult?.({ results: [{ isFinal: false, 0: { transcript: 'Pay school fees' } }] }), 50); }
+      stop() {
+        this.onresult?.({ results: [{ isFinal: true, 0: { transcript: 'Pay school fees on 20 November 2026' } }] });
+        setTimeout(() => this.onend?.(), 20);
+      }
+      abort() {}
+    }
+    window.SpeechRecognition = window.webkitSpeechRecognition = FakeRecognition;
+  });
+  await p.goto(`${BASE}/login`);
+  await p.getByRole('button', { name: /Try the demo/ }).click();
+  await p.waitForURL('**/app');
+  const big = p.getByRole('button', { name: 'Hold to speak and save' });
+  await big.scrollIntoViewIfNeeded();
+  const box = await big.boundingBox();
+  await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await p.mouse.down();
+  await p.waitForFunction(() => document.querySelector('#quick-add-input')?.value === 'Pay school fees');
+  await p.getByText('Listening… let go or stop talking to save').waitFor();
+  await p.waitForTimeout(700);
+  await p.mouse.up();
+  await confirmAdded(p, null, [/school fees/i, /20 Nov 2026/]);
+  await v.ctx.close();
+});
+
+await step('Bigger text and dark colours from Settings stay after reload', async () => {
+  const v = await newPage();
+  const p = v.page;
+  await p.goto(`${BASE}/login`);
+  await p.getByRole('button', { name: /Try the demo/ }).click();
+  await p.waitForURL('**/app');
+  await p.goto(`${BASE}/app/settings`);
+  await p.getByRole('tab', { name: 'Extra large' }).click();
+  await p.getByRole('tab', { name: 'Dark' }).click();
+  const look = () => p.evaluate(() => [document.documentElement.style.fontSize, document.documentElement.dataset.theme, getComputedStyle(document.body).backgroundColor]);
+  let [size, theme, bg] = await look();
+  expect(size === '125%' && theme === 'dark', `applied: ${size} ${theme}`);
+  await p.reload();
+  [size, theme, bg] = await look();
+  expect(size === '125%' && theme === 'dark', `after reload: ${size} ${theme}`);
+  expect(bg !== 'rgb(247, 245, 242)', `dark background, got ${bg}`);
   await v.ctx.close();
 });
 
@@ -609,7 +660,7 @@ await step('Mobile: demo login, bottom nav, no horizontal scroll', async () => {
   await p.goto(`${BASE}/login`);
   await p.getByRole('button', { name: /Try the demo/ }).click();
   await p.waitForURL('**/app');
-  await p.getByRole('link', { name: 'Add a memory' }).waitFor();
+  await p.getByRole('link', { name: 'Add a reminder' }).waitFor();
   for (const path of ['', 'upcoming', 'shopping', 'people', 'calendar', 'expiry', 'settings', 'lists', 'add']) {
     await p.goto(`${BASE}/app/${path}`);
     await p.waitForTimeout(300);
@@ -666,7 +717,7 @@ await step('Delete my account: signs out, and the account can’t log in again',
   await p.fill('#su-password', 'ravipass12');
   await p.getByRole('button', { name: 'Create account' }).click();
   await p.waitForURL('**/app/welcome');
-  await p.goto(`${BASE}/app/settings`);
+  await p.goto(`${BASE}/app/settings?tab=data`);
   await p.getByRole('button', { name: 'Delete my account' }).click();
   await p.getByRole('dialog').getByRole('button', { name: 'Delete my account' }).click();
   await p.getByText('Your account has been deleted').waitFor();

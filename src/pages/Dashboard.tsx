@@ -11,7 +11,7 @@ import { formatDate, formatLongToday, now, relativeLabel, todayISO } from '../li
 import { dosesOn } from '../lib/medicines';
 import { DoseList } from '../components/DoseList';
 import { formatMoney, plural } from '../lib/format';
-import { active, comingSoon, dueToday, expiringSoon, overallStatus, recentlyAdded, sortByDue, type LendingView } from '../lib/selectors';
+import { active, comingSoon, dueToday, expiringSoon, overallStatus, recentlyAdded, sortByDue, type LendingView, type MemoryView } from '../lib/selectors';
 import { useStore, useViews } from '../store/DataProvider';
 
 const STATUS_COPY = {
@@ -39,6 +39,28 @@ export function lendingTitle(l: LendingView) {
   // "Drill machine" reads naturally lowercased; "Harry Potter books" keeps its capitals.
   const item = /[A-Z]/.test(raw.slice(1)) ? raw : raw.toLowerCase();
   return l.direction === 'lent' ? `${who} has my ${item}` : `I borrowed ${item.startsWith('a ') ? item : `a ${item}`} from ${who}`;
+}
+
+/** Today's items by part of the day, so the list reads like the day ahead. */
+export function todayGroups(items: MemoryView[]): { key: string; label: MessageKey; items: MemoryView[] }[] {
+  const groups: { key: string; label: MessageKey; items: MemoryView[] }[] = [
+    { key: 'overdue', label: 'today.overdue', items: [] },
+    { key: 'morning', label: 'today.morning', items: [] },
+    { key: 'afternoon', label: 'today.afternoon', items: [] },
+    { key: 'evening', label: 'today.evening', items: [] },
+    { key: 'anytime', label: 'today.anytime', items: [] },
+  ];
+  const by = Object.fromEntries(groups.map((g) => [g.key, g.items]));
+  for (const m of items) {
+    const time = m.dueTimes?.[0];
+    if ((m.daysLeft ?? 0) < 0) by.overdue.push(m);
+    else if (!time) by.anytime.push(m);
+    else if (time < '12:00') by.morning.push(m);
+    else if (time < '17:00') by.afternoon.push(m);
+    else by.evening.push(m);
+  }
+  for (const g of groups) g.items.sort((a, b) => (a.dueTimes?.[0] ?? '').localeCompare(b.dueTimes?.[0] ?? ''));
+  return groups.filter((g) => g.items.length);
 }
 
 export default function Dashboard() {
@@ -91,7 +113,7 @@ export default function Dashboard() {
       </header>
 
       <div className="animate-fade-up" style={{ animationDelay: '60ms' }}>
-        <QuickAdd autoFocus={params.get('add') === '1'} autoVoice={params.get('voice') === '1'} />
+        <QuickAdd autoFocus={params.get('add') === '1'} autoVoice={params.get('voice') === '1'} bigMic />
       </div>
       {showHint && (
         <p className="flex items-center justify-between gap-3 rounded-2xl bg-brand-50 px-4 py-2.5 text-sm text-brand-800 lg:hidden">
@@ -116,11 +138,18 @@ export default function Dashboard() {
       <div className="grid gap-5 lg:grid-cols-2">
         <SectionCard title={t('dash.dueToday')} emoji="🔴" count={today.length} to="/app/upcoming" delay={100}>
           {today.length ? (
-            <ul className="-mx-2">
-              {today.map((m) => (
-                <MemoryRow key={m.id} m={m} />
+            <div className="-mx-2 space-y-2">
+              {todayGroups(today).map((g) => (
+                <section key={g.key} aria-label={t(g.label)}>
+                  <h3 className={cx('px-2 pt-1 text-xs font-bold uppercase tracking-wide', g.key === 'overdue' ? 'text-attn' : 'text-muted')}>{t(g.label)}</h3>
+                  <ul>
+                    {g.items.map((m) => (
+                      <MemoryRow key={m.id} m={m} showSnooze />
+                    ))}
+                  </ul>
+                </section>
               ))}
-            </ul>
+            </div>
           ) : (
             <EmptyState emoji="🎉" title={t('dash.empty.today.title')} body={t('dash.empty.today.body')} />
           )}

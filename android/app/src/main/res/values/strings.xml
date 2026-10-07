@@ -11,4 +11,11 @@
     <string name="shortcut_shopping_short">Shopping list</string>
     <string name="shortcut_shopping_long">Open the shopping list</string>
     <string name="share_label">Add to ZarooriBox</string>
+    <string name="widget_title">ZarooriBox · Today</string>
+    <string name="widget_description">Today\'s medicines and reminders</string>
+    <string name="widget_add">Add a reminder</string>
+    <string name="widget_empty">Nothing due today 🎉</string>
+    <string name="widget_open_app">Open ZarooriBox to see today</string>
+    <string name="widget_overdue">Overdue</string>
+    <string name="widget_more">+ %1$d more</string>
 </resources>
