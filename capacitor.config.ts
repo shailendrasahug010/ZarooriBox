@@ -4,12 +4,12 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // After `npm run build`, run `npx cap sync` to copy it into android/ and ios/.
 const config: CapacitorConfig = {
   appId: 'app.zaroori',
-  appName: 'Zaroori',
+  appName: 'ZarooriBox',
   webDir: 'dist',
   android: { allowMixedContent: false },
   plugins: {
     SplashScreen: { launchShowDuration: 1500, launchAutoHide: false, backgroundColor: '#F7F5F2', showSpinner: false },
-    LocalNotifications: { smallIcon: 'ic_stat_zaroori', iconColor: '#17745D' },
+    LocalNotifications: { smallIcon: 'ic_stat_zaroori', iconColor: '#0B5BD3' },
   },
 };
 

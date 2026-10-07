@@ -1,6 +1,6 @@
 {
-  "name": "Zaroori",
-  "short_name": "Zaroori",
+  "name": "ZarooriBox",
+  "short_name": "ZarooriBox",
   "description": "Everything important, in one place: bills, renewals, home maintenance, shopping and things you lent.",
   "id": "/app",
   "start_url": "/app",

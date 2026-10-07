@@ -1,4 +1,4 @@
-// The app was called LifeBox before it became Zaroori. Data saved on this device under
+// The app was called LifeBox before it became ZarooriBox. Data saved on this device under
 // the old "lifebox:" keys is copied to the new "zaroori:" keys once, so nothing is lost.
 // Imported first in main.tsx, before anything reads storage.
 try {

@@ -2,7 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { navigateTo, pathForDeepLink } from './lib/appNavigation';
 import { listenForNotificationActions } from './lib/notifications/native';
 
-// Start-up work that depends on where Zaroori runs: the phone app (Capacitor) or
+// Start-up work that depends on where ZarooriBox runs: the phone app (Capacitor) or
 // a browser, where it can be installed to the home screen as a web app.
 
 export async function initPlatform() {
@@ -20,7 +20,7 @@ export async function initPlatform() {
       if (canGoBack && !top) history.back();
       else App.minimizeApp().catch(() => App.exitApp());
     });
-    // Home-screen shortcuts ("Add by voice") and Share to Zaroori arrive as app.zaroori:// links.
+    // Home-screen shortcuts ("Add by voice") and Share to ZarooriBox arrive as app.zaroori:// links.
     const open = (url?: string | null) => {
       const path = url ? pathForDeepLink(url) : null;
       if (path) navigateTo(path);

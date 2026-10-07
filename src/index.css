@@ -11,14 +11,14 @@
   --color-line: #ebe7e1;
   --color-line-strong: #ddd8d0;
 
-  --color-brand-50: #edf7f3;
-  --color-brand-100: #d3ede3;
-  --color-brand-200: #a9dcc9;
-  --color-brand-300: #77c3a8;
-  --color-brand-500: #23896f;
-  --color-brand-600: #17745d;
-  --color-brand-700: #115c4a;
-  --color-brand-800: #0d4739;
+  --color-brand-50: #eff5ff;
+  --color-brand-100: #dbe8fe;
+  --color-brand-200: #bdd5fd;
+  --color-brand-300: #8eb8fb;
+  --color-brand-500: #1f6fe5;
+  --color-brand-600: #0b5bd3;
+  --color-brand-700: #0a49a8;
+  --color-brand-800: #0d3d85;
 
   --color-attn-bg: #fcefec;
   --color-attn: #a8443a;
@@ -32,7 +32,7 @@
 
   --shadow-card: 0 1px 2px rgb(30 28 25 / 0.04), 0 6px 20px -8px rgb(30 28 25 / 0.08);
   --shadow-lift: 0 2px 6px rgb(30 28 25 / 0.06), 0 18px 40px -12px rgb(30 28 25 / 0.18);
-  --shadow-focus: 0 0 0 4px rgb(35 137 111 / 0.18);
+  --shadow-focus: 0 0 0 4px rgb(31 111 229 / 0.18);
 
   --animate-fade-up: fade-up 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   --animate-fade-in: fade-in 0.25s ease-out both;
@@ -144,7 +144,7 @@
     @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-[0.94rem] font-semibold transition duration-150 select-none active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
-    @apply bg-brand-600 text-white shadow-[0_1px_0_rgb(255_255_255/0.15)_inset,0_4px_12px_-4px_rgb(23_116_93/0.6)] hover:bg-brand-700;
+    @apply bg-brand-600 text-white shadow-[0_1px_0_rgb(255_255_255/0.15)_inset,0_4px_12px_-4px_rgb(11_91_211/0.6)] hover:bg-brand-700;
   }
   .btn-secondary {
     @apply border border-line-strong bg-surface text-ink hover:bg-paper;

@@ -115,7 +115,7 @@ export function AppLayout() {
 
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[16.5rem] flex-col border-r border-line/80 bg-paper px-4 py-5 lg:flex" aria-label="Main">
-        <Link to="/app" className="mb-6 px-2" aria-label="Zaroori home">
+        <Link to="/app" className="mb-6 px-2" aria-label="ZarooriBox home">
           <Logo />
         </Link>
         <nav className="flex-1 space-y-0.5 overflow-y-auto">
@@ -138,7 +138,7 @@ export function AppLayout() {
         {/* Top bar */}
         <header className="sticky top-0 z-20 border-b border-line/60 bg-paper/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
           <div className="mx-auto flex h-16 max-w-5xl items-center gap-2 px-4 sm:px-6">
-            <Link to="/app" className="lg:hidden" aria-label="Zaroori home">
+            <Link to="/app" className="lg:hidden" aria-label="ZarooriBox home">
               <Logo />
             </Link>
             <form
@@ -193,7 +193,7 @@ export function AppLayout() {
               to="/app/add"
               aria-label={t('nav.addMemory')}
               aria-current={path === '/app/add' ? 'page' : undefined}
-              className="-mt-6 grid size-[3.6rem] place-items-center rounded-[1.35rem] bg-brand-600 text-white shadow-[0_10px_24px_-8px_rgb(23_116_93/0.7)] ring-4 ring-paper transition active:scale-95"
+              className="-mt-6 grid size-[3.6rem] place-items-center rounded-[1.35rem] bg-brand-600 text-white shadow-[0_10px_24px_-8px_rgb(11_91_211/0.7)] ring-4 ring-paper transition active:scale-95"
             >
               <Plus className="size-7" strokeWidth={2.5} aria-hidden="true" />
             </Link>

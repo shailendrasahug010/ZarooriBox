@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-  // Only signed-in Zaroori users may spend AI credits.
+  // Only signed-in ZarooriBox users may spend AI credits.
   const authHeader = req.headers.get('Authorization') ?? '';
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
     global: { headers: { Authorization: authHeader } },

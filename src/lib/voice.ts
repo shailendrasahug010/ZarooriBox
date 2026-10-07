@@ -186,7 +186,7 @@ export const nativeVoice: VoiceInput = {
 
 const none: VoiceInput = { kind: 'none', isSupported: () => false, start: async (h) => (h.onError('unsupported'), null) };
 
-/** The best voice engine for where Zaroori is running. */
+/** The best voice engine for where ZarooriBox is running. */
 export function getVoiceInput(): VoiceInput {
   if (nativeVoice.isSupported()) return nativeVoice;
   if (webVoice.isSupported()) return webVoice;

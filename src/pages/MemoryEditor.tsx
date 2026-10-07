@@ -129,7 +129,7 @@ export function AddMemory() {
     : blank(catParam && MEMORY_CATEGORIES.some((c) => c.id === catParam) ? catParam : 'personal', defaultReminder);
   const { errors, saving, run } = useSave();
 
-  // Document scanning: a photo from the camera button, the Add page or Share to Zaroori.
+  // Document scanning: a photo from the camera button, the Add page or Share to ZarooriBox.
   const [scanFile, setScanFile] = useState<File | null>(state?.scanFile ?? null);
   const [scan, setScan] = useState<{ outcome: ScanOutcome; input: MemoryInput; files: File[]; n: number } | null>(null);
   const scanning = !!scanFile && !scan;
@@ -188,7 +188,7 @@ export function AddMemory() {
           onSubmit={async (input) => {
             const ok = await run(async () => {
               const m = await store.addMemory({ ...input, source: input.source ?? 'manual' });
-              toast.success(m.dueDate ? `Saved. We’ll remind you before ${formatDate(m.dueDate)}` : 'Saved to your Zaroori');
+              toast.success(m.dueDate ? `Saved. We’ll remind you before ${formatDate(m.dueDate)}` : 'Saved to your ZarooriBox');
             });
             if (ok) navigate('/app');
           }}

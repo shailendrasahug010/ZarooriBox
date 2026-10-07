@@ -1,4 +1,4 @@
-// Zaroori service worker: makes the installed app open instantly and work offline.
+// ZarooriBox service worker: makes the installed app open instantly and work offline.
 // Pages: network first, falling back to the cached app shell. Built assets (hashed
 // file names): cache first. Supabase and other cross-origin calls are never cached.
 const VERSION = 'zaroori-v3';
@@ -52,7 +52,7 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// Tapping a notification opens (or focuses) Zaroori. The Done / Tomorrow buttons and
+// Tapping a notification opens (or focuses) ZarooriBox. The Done / Tomorrow buttons and
 // taps on a single-item reminder go to /app/act, which runs the action in the app.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();

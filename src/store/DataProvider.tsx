@@ -43,7 +43,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           const target = f.memoryId ? { kind: 'memory' as const, id: f.memoryId } : f.lendingId ? { kind: 'lending' as const, id: f.lendingId } : undefined;
           await deviceChannel.send({ title: f.title, body: f.body, tag: `zaroori-${f.dueDate}`, url: '/app', target });
         } else {
-          await deviceChannel.send({ title: `Zaroori: ${fired.length} things need you`, body: fired.slice(0, 3).map((f) => f.title).join(', '), tag: 'zaroori-digest', url: '/app' });
+          await deviceChannel.send({ title: `ZarooriBox: ${fired.length} things need you`, body: fired.slice(0, 3).map((f) => f.title).join(', '), tag: 'zaroori-digest', url: '/app' });
         }
       } catch {
         // A failed check retries on the next tick.
@@ -105,7 +105,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return (
       <div role="alert" className="grid min-h-dvh place-items-center bg-paper p-6 text-center">
         <div>
-          <p className="text-lg font-semibold text-ink">We couldn’t load your Zaroori.</p>
+          <p className="text-lg font-semibold text-ink">We couldn’t load your ZarooriBox.</p>
           <p className="mt-1 text-muted">{error}</p>
           <button className="btn btn-primary mt-5" onClick={() => location.reload()}>Try again</button>
         </div>
@@ -117,7 +117,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       <div className="grid min-h-dvh place-items-center bg-paper" aria-busy="true" aria-live="polite">
         <div className="flex flex-col items-center gap-3 text-muted">
           <span className="size-10 animate-pulse rounded-2xl bg-brand-600" />
-          <span className="text-sm">Opening your Zaroori…</span>
+          <span className="text-sm">Opening your ZarooriBox…</span>
         </div>
       </div>
     );

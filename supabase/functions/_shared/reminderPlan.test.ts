@@ -30,7 +30,7 @@ Deno.test('waits for the chosen time, and sends once a day', () => {
   eq(planForUser(base, [rem('1', '2026-10-07')], [], at730), null, 'before 08:00');
   const p = planForUser(base, [rem('1', '2026-10-07')], [], at815)!;
   eq(p.messages.length, 1);
-  eq(p.messages[0].subject, 'Zaroori: Item 1: due today');
+  eq(p.messages[0].subject, 'ZarooriBox: Item 1: due today');
   eq(p.reminderUpdates, [{ id: '1', deliveredFor: '2026-10-07' }]);
   eq(planForUser({ ...base, last_digest_on: '2026-10-07' }, [rem('1', '2026-10-07')], [], at815), null, 'already sent today');
 });
@@ -41,7 +41,7 @@ Deno.test('digest groups items; without digest each item is its own message', ()
   const digest = planForUser(base, items, lend, at815)!;
   eq(digest.messages.length, 1);
   eq(digest.messages[0].lines, ['Item 2 (due today)', 'Item 1 (due in 2 days)', 'Follow up: Rahul owes you ₹500']);
-  eq(digest.messages[0].subject, 'Zaroori: 3 things need you today');
+  eq(digest.messages[0].subject, 'ZarooriBox: 3 things need you today');
   const each = planForUser({ ...base, notifications: { ...base.notifications, dailyDigest: false } }, items, lend, at815)!;
   eq(each.messages.length, 3);
 });
@@ -77,7 +77,7 @@ Deno.test('messenger calls each provider with the right request', async () => {
     return Promise.resolve(new Response('{}', { status: 200 }));
   }) as unknown as typeof fetch;
   const secrets: Record<string, string> = {
-    RESEND_API_KEY: 're_x', RESEND_FROM: 'Zaroori <r@x.com>',
+    RESEND_API_KEY: 're_x', RESEND_FROM: 'ZarooriBox <r@x.com>',
     WHATSAPP_TOKEN: 'wa', WHATSAPP_PHONE_NUMBER_ID: '123', WHATSAPP_TEMPLATE: 'zaroori_reminder',
     TWILIO_ACCOUNT_SID: 'AC1', TWILIO_AUTH_TOKEN: 'tok', TWILIO_FROM: '+15550001111',
   };

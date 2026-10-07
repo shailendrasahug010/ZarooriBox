@@ -1,6 +1,6 @@
 import type { ISODate, RepeatSpec, RepeatFrequency, RepeatUnit } from '../types';
 
-// All Zaroori dates are local calendar days ("YYYY-MM-DD"), never UTC timestamps,
+// All ZarooriBox dates are local calendar days ("YYYY-MM-DD"), never UTC timestamps,
 // so "due today" means today where the user is.
 
 let nowOverride: Date | null = null;

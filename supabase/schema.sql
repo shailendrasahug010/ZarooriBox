@@ -1,4 +1,4 @@
--- Zaroori database schema for Supabase (PostgreSQL).
+-- ZarooriBox database schema for Supabase (PostgreSQL).
 -- Run in the Supabase SQL editor, then set VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY.
 -- Every table carries user_id and row-level security so a user can only ever
 -- read or write their own rows, whatever the client sends.

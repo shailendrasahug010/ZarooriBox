@@ -111,7 +111,7 @@ export function createSupabaseAuth(): AuthService {
       return toUser(data.user!);
     },
     async signInWithGoogle() {
-      if ((await providers())?.google === false) throw new AuthError('Google sign-in isn’t switched on for Zaroori yet. Use your email instead.');
+      if ((await providers())?.google === false) throw new AuthError('Google sign-in isn’t switched on for ZarooriBox yet. Use your email instead.');
       if (Capacitor.isNativePlatform()) {
         // Google blocks sign-in inside embedded web views, so use the system browser.
         listenForNativeCallback();

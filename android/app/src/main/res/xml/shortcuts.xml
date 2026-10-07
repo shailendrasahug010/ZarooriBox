@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Long-press the Zaroori icon: Add by voice, Scan a document, Shopping list. -->
+<!-- Long-press the ZarooriBox icon: Add by voice, Scan a document, Shopping list. -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
         android:shortcutId="add_by_voice"

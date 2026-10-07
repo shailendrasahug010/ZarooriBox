@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>Zaroori</string>
+        <string>ZarooriBox</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -23,9 +23,9 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Zaroori uses the microphone so you can add things by speaking.</string>
+	<string>ZarooriBox uses the microphone so you can add things by speaking.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Zaroori turns what you say into reminders and list items.</string>
+	<string>ZarooriBox turns what you say into reminders and list items.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

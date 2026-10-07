@@ -27,7 +27,7 @@ const publicUser = ({ salt: _s, passwordHash: _p, ...u }: StoredUser): User => {
 };
 
 /**
- * Browser-only accounts for running Zaroori without a backend. Passwords are
+ * Browser-only accounts for running ZarooriBox without a backend. Passwords are
  * salted and hashed, sessions expire, and repeated wrong passwords lock the
  * account briefly. Real deployments should use Supabase Auth (see supabaseAuth.ts).
  */

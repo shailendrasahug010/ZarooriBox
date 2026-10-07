@@ -17,7 +17,7 @@ export default function Lists() {
   ];
   return (
     <div>
-      <PageHeader title="Lists" subtitle="Everything in your Zaroori, by kind." />
+      <PageHeader title="Lists" subtitle="Everything in your ZarooriBox, by kind." />
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {tiles.map((t, i) => (
           <li key={t.to} className="animate-fade-up" style={{ animationDelay: `${i * 30}ms` }}>

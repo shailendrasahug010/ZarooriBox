@@ -31,8 +31,8 @@ const STATUS_TEXT: Record<ChannelStatus, string> = {
   needs_permission: 'Your browser will ask for permission',
   blocked: 'Blocked in browser settings',
   unsupported: 'Not supported in this browser',
-  server: 'Sent by Zaroori at your summary time',
-  needs_cloud: 'Available with a Zaroori cloud account',
+  server: 'Sent by ZarooriBox at your summary time',
+  needs_cloud: 'Available with a ZarooriBox cloud account',
 };
 
 const CHANNEL_NAMES: Record<string, string> = { email: 'Email', whatsapp: 'WhatsApp', sms: 'SMS' };
@@ -122,7 +122,7 @@ export default function Settings() {
         toast.error(
           s === 'blocked'
             ? isNativeApp()
-              ? 'Notifications are off for Zaroori. Turn them on in your phone’s settings.'
+              ? 'Notifications are off for ZarooriBox. Turn them on in your phone’s settings.'
               : 'Notifications are blocked. Allow them in your browser’s site settings.'
             : 'Notifications aren’t available here.',
         );
@@ -210,7 +210,7 @@ export default function Settings() {
         <FamilySettings />
       </Section>
 
-      <Section id="notifications" title="Notifications" description="How Zaroori reaches you when something is due.">
+      <Section id="notifications" title="Notifications" description="How ZarooriBox reaches you when something is due.">
         <ul className="divide-y divide-line">
           <li className="flex items-center gap-4 py-3">
             <div className="flex-1">
@@ -273,7 +273,7 @@ export default function Settings() {
           <button
             type="button"
             className="btn btn-secondary btn-sm mt-2"
-            onClick={() => deviceChannel.send({ title: 'Zaroori test 👋', body: 'Notifications are working on this device.' })}
+            onClick={() => deviceChannel.send({ title: 'ZarooriBox test 👋', body: 'Notifications are working on this device.' })}
           >
             Send a test notification
           </button>
@@ -335,8 +335,8 @@ export default function Settings() {
         <p className="flex gap-2 text-sm text-ink-soft">
           <ShieldCheck className="size-5 shrink-0 text-brand-600" aria-hidden="true" />
           {store.mode === 'local'
-            ? 'Your Zaroori is stored only in this browser on this device. Nobody else, including us, can see it.'
-            : 'Your Zaroori is stored in your private account. Database rules make sure only you can read or change it.'}
+            ? 'Your ZarooriBox is stored only in this browser on this device. Nobody else, including us, can see it.'
+            : 'Your ZarooriBox is stored in your private account. Database rules make sure only you can read or change it.'}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" className="btn btn-secondary btn-sm" onClick={exportData}>
@@ -379,14 +379,14 @@ export default function Settings() {
       <ConfirmDialog
         open={confirm === 'delete'}
         title="Delete everything?"
-        body="All memories, reminders, lists and people in your Zaroori will be permanently deleted. This can’t be undone."
+        body="All memories, reminders, lists and people in your ZarooriBox will be permanently deleted. This can’t be undone."
         confirmLabel="Delete everything"
         danger
         onCancel={() => setConfirm(null)}
         onConfirm={async () => {
           setConfirm(null);
           await store.deleteAllData();
-          toast.success('Your Zaroori is now empty');
+          toast.success('Your ZarooriBox is now empty');
         }}
       />
     </div>

@@ -2,7 +2,7 @@ import Anthropic from 'npm:@anthropic-ai/sdk@^0.131';
 import { MODEL } from './quickAddAI.ts';
 
 // Reads a photo of a document (passport, insurance policy, bill, warranty card) and
-// returns what Zaroori needs to remind the person: a title, category and the date
+// returns what ZarooriBox needs to remind the person: a title, category and the date
 // that matters (expiry, renewal or due date). The client validates every field.
 
 const nullable = (schema: Record<string, unknown>) => ({ anyOf: [schema, { type: 'null' }] });
@@ -26,7 +26,7 @@ export const SCAN_SCHEMA = {
   },
 } as const;
 
-const SYSTEM = `You read a photo of a document for Zaroori, an Indian personal reminder app, and extract what the person needs to be reminded about.
+const SYSTEM = `You read a photo of a document for ZarooriBox, an Indian personal reminder app, and extract what the person needs to be reminded about.
 
 - isDocument: false if the photo is not a document, bill, policy, card or receipt (then use title "Photo", categoryId "personal", dueDate null, dateMeaning "none").
 - title: short Title Case name of the thing, e.g. "Passport", "Car Insurance", "Electricity Bill", "Fridge Warranty", "Driving Licence". Include whose it is only if a name is printed and it helps ("Passport (Ananya)").

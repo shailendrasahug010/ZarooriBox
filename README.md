@@ -1,19 +1,19 @@
-# Zaroori
+# ZarooriBox
 
 **Everything important, in one place.**
 
-Zaroori is a personal memory assistant for bills, renewals, home maintenance, shopping, things you lent or borrowed, warranties, documents and important dates. Type or say something like *"Bike insurance expires on 17 November"* and Zaroori works out the date, category and reminder for you.
+ZarooriBox is a personal memory assistant for bills, renewals, home maintenance, shopping, things you lent or borrowed, warranties, documents and important dates. Type or say something like *"Bike insurance expires on 17 November"* and ZarooriBox works out the date, category and reminder for you.
 
 It runs as a website, as an installable web app, and as an Android and iPhone app built from the same code.
 
 ### What it does
 
 - **Quick Add by typing or voice**, in English, Hindi or Hinglish ("कल बिजली का बिल भरना है", "Rahul ko 500 diye"). Voice works in 11 Indian languages plus Indian English.
-- **Scan a document**: photograph a passport, policy, bill or warranty card and Zaroori fills in the name, expiry or due date and amount (needs the AI key below).
+- **Scan a document**: photograph a passport, policy, bill or warranty card and ZarooriBox fills in the name, expiry or due date and amount (needs the AI key below).
 - **Done / Tomorrow / Next week** right from phone alerts, browser notifications, the bell and reminder emails. Swipe a reminder right to finish it, left to snooze it, with undo.
 - **Family sharing**: create a family in Settings, share the 8-letter invite code, then share any bill or item. The shopping list is shared automatically. Each person gets their own reminders at their own time.
 - **Hindi screens** (Settings → Language), a short first-run setup, and search across everything including attachment names.
-- **Faster adding on Android**: long-press the app icon for *Add by voice*, *Scan a document* and *Shopping list*, or share text or a photo from WhatsApp, Gallery or Messages to Zaroori.
+- **Faster adding on Android**: long-press the app icon for *Add by voice*, *Scan a document* and *Shopping list*, or share text or a photo from WhatsApp, Gallery or Messages to ZarooriBox.
 
 ## Run it locally
 
@@ -26,7 +26,7 @@ npm run dev          # http://localhost:5173
 
 Open the site, then click **Try the demo with sample data** (on the landing page or the login screen) to explore a fully populated account, or **Start Free** to create your own (empty) account.
 
-`npm run dev` and `npm run build` use the live Zaroori Supabase project (settings in `.env.production`, which holds only the public URL and publishable key). To run Zaroori entirely in your browser instead, with accounts and data kept in `localStorage` on that device, use `npm run build:local` or delete `.env.production`.
+`npm run dev` and `npm run build` use the live ZarooriBox Supabase project (settings in `.env.production`, which holds only the public URL and publishable key). To run ZarooriBox entirely in your browser instead, with accounts and data kept in `localStorage` on that device, use `npm run build:local` or delete `.env.production`.
 
 Other commands:
 
@@ -41,7 +41,7 @@ npm run e2e          # browser walkthrough of every core flow (run `npm run buil
 
 ## Supabase (real accounts, sync across devices)
 
-Zaroori is already connected to its Supabase project (`usuityljxclilfljwvvd`, Mumbai): the schema, row-level security, storage bucket, both edge functions and the 15-minute reminder schedule are live. To set up your own project instead:
+ZarooriBox is already connected to its Supabase project (`usuityljxclilfljwvvd`, Mumbai): the schema, row-level security, storage bucket, both edge functions and the 15-minute reminder schedule are live. To set up your own project instead:
 
 1. Create a Supabase project.
 2. In the SQL editor, run [`supabase/schema.sql`](supabase/schema.sql). It creates every table, row-level security on each one, ownership triggers and a private storage bucket for attachments. It is safe to run again after updates.
@@ -79,14 +79,14 @@ The `send-reminders` function sends each person what's due at the time they pick
 
 | Channel | Provider | Secrets |
 | --- | --- | --- |
-| Email | [Resend](https://resend.com) | `RESEND_API_KEY`, `RESEND_FROM` (e.g. `Zaroori <reminders@yourdomain.com>`) |
-| WhatsApp | Meta WhatsApp Cloud API | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_TEMPLATE` (an approved template whose body has one variable, e.g. `Zaroori reminder: {{1}}`), optional `WHATSAPP_TEMPLATE_LANG` |
+| Email | [Resend](https://resend.com) | `RESEND_API_KEY`, `RESEND_FROM` (e.g. `ZarooriBox <reminders@yourdomain.com>`) |
+| WhatsApp | Meta WhatsApp Cloud API | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_TEMPLATE` (an approved template whose body has one variable, e.g. `ZarooriBox reminder: {{1}}`), optional `WHATSAPP_TEMPLATE_LANG` |
 | SMS | Twilio | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` |
 
 ```bash
 supabase functions deploy send-reminders --no-verify-jwt   # it checks callers itself
 supabase secrets set ZAROORI_APP_URL=https://your-site
-supabase secrets set RESEND_API_KEY=... RESEND_FROM="Zaroori <reminders@yourdomain.com>"
+supabase secrets set RESEND_API_KEY=... RESEND_FROM="ZarooriBox <reminders@yourdomain.com>"
 ```
 
 Reminder emails carry **Done / Tomorrow / Next week** links. They open `ZAROORI_APP_URL/act`, which asks the `reminder-action` function to make the change; the link is signed for one person and one item and expires after 30 days. Set `ZAROORI_APP_URL` to your deployed site or the buttons point nowhere. Links are signed with the service role key unless you set `ACTION_SECRET`.
@@ -105,11 +105,11 @@ The `android/` and `ios/` folders are [Capacitor](https://capacitorjs.com) proje
 - **Reminders while the app is closed**: alerts are scheduled with the phone at your chosen time.
 - Google sign-in through the system browser, the Android back button, splash screen and app icon.
 - **Done / Tomorrow / Next week buttons** on reminder alerts.
-- **Android home-screen shortcuts** (long-press the icon) and **Share to Zaroori** for text and photos. On iPhone, Share and Quick Actions need an extension added in Xcode; the `app.zaroori://add?voice=1`, `app.zaroori://scan` and `app.zaroori://share?text=…` links already work for Shortcuts.
+- **Android home-screen shortcuts** (long-press the icon) and **Share to ZarooriBox** for text and photos. On iPhone, Share and Quick Actions need an extension added in Xcode; the `app.zaroori://add?voice=1`, `app.zaroori://scan` and `app.zaroori://share?text=…` links already work for Shortcuts.
 
 The phone app uses the same Supabase account as the website (it is built with `.env.production`). Build with `npm run build:local` instead to keep everything on the phone.
 
-**Get an Android APK without installing anything:** every push to `main` builds one in GitHub Actions (**Actions → Android app → latest run → Artifacts → zaroori-android-debug**). Unzip it, copy `app-debug.apk` to your phone and open it (allow "install unknown apps"). It connects to the Zaroori Supabase project automatically.
+**Get an Android APK without installing anything:** every push to `main` builds one in GitHub Actions (**Actions → Android app → latest run → Artifacts → zaroori-android-debug**). Unzip it, copy `app-debug.apk` to your phone and open it (allow "install unknown apps"). It connects to the ZarooriBox Supabase project automatically.
 
 **Build it yourself:**
 

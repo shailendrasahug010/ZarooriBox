@@ -1,6 +1,6 @@
 name: Android app
 
-# Builds an installable Zaroori APK on every push to main.
+# Builds an installable ZarooriBox APK on every push to main.
 # Download it from the run's "Artifacts" section (zaroori-android-debug).
 # The app connects to the Supabase project in .env.production.
 
