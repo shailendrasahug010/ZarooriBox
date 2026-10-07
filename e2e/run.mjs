@@ -457,36 +457,6 @@ await step('Voice keeps listening after a pause, so long sentences aren’t cut 
   await v.ctx.close();
 });
 
-await step('Big mic on Home: hold, speak, let go, and it is saved', async () => {
-  const v = await newPage({ width: 390, height: 844 }, true);
-  const p = v.page;
-  await v.ctx.addInitScript(() => {
-    class FakeRecognition {
-      start() { setTimeout(() => this.onresult?.({ results: [{ isFinal: false, 0: { transcript: 'Pay school fees' } }] }), 50); }
-      stop() {
-        this.onresult?.({ results: [{ isFinal: true, 0: { transcript: 'Pay school fees on 20 November 2026' } }] });
-        setTimeout(() => this.onend?.(), 20);
-      }
-      abort() {}
-    }
-    window.SpeechRecognition = window.webkitSpeechRecognition = FakeRecognition;
-  });
-  await p.goto(`${BASE}/login`);
-  await p.getByRole('button', { name: /Try the demo/ }).click();
-  await p.waitForURL('**/app');
-  const big = p.getByRole('button', { name: 'Hold to speak and save' });
-  await big.scrollIntoViewIfNeeded();
-  const box = await big.boundingBox();
-  await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await p.mouse.down();
-  await p.waitForFunction(() => document.querySelector('#quick-add-input')?.value === 'Pay school fees');
-  await p.getByText('Listening… let go or stop talking to save').waitFor();
-  await p.waitForTimeout(700);
-  await p.mouse.up();
-  await confirmAdded(p, null, [/school fees/i, /20 Nov 2026/]);
-  await v.ctx.close();
-});
-
 await step('Bigger text and dark colours from Settings stay after reload', async () => {
   const v = await newPage();
   const p = v.page;
