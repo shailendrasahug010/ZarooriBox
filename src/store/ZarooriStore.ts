@@ -21,7 +21,7 @@ import type { Repository } from '../data/repository';
 import { EMPTY_DATA } from '../data/repository';
 import { buildSeed, defaultSettings, deviceTimezone } from '../data/seed';
 import { addDays, diffDays, formatDate, nextOccurrenceAfter, todayISO } from '../lib/dates';
-import { capitalizeName, formatMoney, nowStamp, uid } from '../lib/format';
+import { capitalizeName, formatMoney, nowStamp, shortTitle, uid } from '../lib/format';
 import { can, limit } from '../lib/plans';
 import { backupCount, prepareRestore, restoredSettings, type Backup } from '../lib/backup';
 import { clearTaken, readTaken, writeTaken } from '../lib/medicines';
@@ -729,8 +729,11 @@ export class ZarooriStore {
       });
       return { kind: 'lending', message: `Saved: ${p.title}`, id: l.id };
     }
+    // A long note keeps a short name; the whole note goes into its description.
+    const title = shortTitle(p.title);
     const m = await this.addMemory({
-      title: p.title,
+      title,
+      ...(title !== p.title ? { description: p.raw.slice(0, 2000) } : {}),
       categoryId: p.categoryId === 'shopping' || p.categoryId === 'people' ? 'personal' : p.categoryId,
       subcategory: p.subcategory,
       dueDate: p.dueDate,
