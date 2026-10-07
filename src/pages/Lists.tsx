@@ -9,6 +9,7 @@ import { useViews } from '../store/DataProvider';
 export default function Lists() {
   const { data, memories, lendings } = useViews();
   const tiles = [
+    { to: '/app/favourites', emoji: '⭐', title: 'Favourites', meta: `${memories.filter((m) => m.favorite && m.status !== 'archived').length} starred` },
     { to: '/app/shopping', emoji: '🛒', title: 'Shopping', meta: `${data.shopping.filter((s) => !s.purchased).length} to buy` },
     { to: '/app/medicines', emoji: '💊', title: 'Medicines', meta: `${active(memories).filter(isMedicine).length} medicines` },
     { to: '/app/bookings', emoji: '🎟️', title: 'Bookings', meta: `${active(memories).filter((m) => m.categoryId === 'bookings' && (!m.dueDate || m.dueDate >= todayISO())).length} upcoming` },

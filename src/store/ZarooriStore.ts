@@ -497,6 +497,14 @@ export class ZarooriStore {
     );
   }
 
+  async setFavorite(id: ID, favorite: boolean) {
+    const patch: Partial<Memory> = { favorite, updatedAt: nowStamp() };
+    await this.mutate(
+      (d) => ({ ...d, memories: d.memories.map((m) => (m.id === id ? { ...m, ...patch } : m)) }),
+      () => this.repo.update('memories', id, patch),
+    );
+  }
+
   async deleteMemory(id: ID): Promise<MemorySnapshot | null> {
     const snap = this.snapshot(id);
     if (!snap) return null;

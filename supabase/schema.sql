@@ -55,6 +55,7 @@ create table if not exists public.memories (
   due_date date,
   -- Times of day (HH:MM) to alert on the due date, e.g. medicine doses or a meeting.
   due_times text[] check (due_times is null or cardinality(due_times) = 0 or (cardinality(due_times) <= 8 and array_to_string(due_times, ',') ~ '^([01][0-9]|2[0-3]):[0-5][0-9](,([01][0-9]|2[0-3]):[0-5][0-9])*$')),
+  favorite boolean not null default false,
   status text not null default 'active' check (status in ('active','completed','archived')),
   amount numeric(14,2) check (amount >= 0),
   currency text not null default 'INR',

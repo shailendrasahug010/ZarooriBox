@@ -20,6 +20,7 @@ const People = lazy(() => import('./pages/People'));
 const HomeMaintenance = lazy(() => import('./pages/HomeMaintenance'));
 const Medicines = lazy(() => import('./pages/Medicines'));
 const Bookings = lazy(() => import('./pages/Bookings'));
+const Favourites = lazy(() => import('./pages/Favourites'));
 const Search = lazy(() => import('./pages/Search'));
 const Calendar = lazy(() => import('./pages/Calendar'));
 const Lists = lazy(() => import('./pages/Lists'));
@@ -107,6 +108,7 @@ export default function App() {
               <Route path="home-maintenance" element={lazyPage(<HomeMaintenance />)} />
               <Route path="medicines" element={lazyPage(<Medicines />)} />
               <Route path="bookings" element={lazyPage(<Bookings />)} />
+              <Route path="favourites" element={lazyPage(<Favourites />)} />
               <Route path="search" element={lazyPage(<Search />)} />
               <Route path="calendar" element={lazyPage(<Calendar />)} />
               <Route path="lists" element={lazyPage(<Lists />)} />

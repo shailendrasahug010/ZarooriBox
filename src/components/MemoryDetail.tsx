@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlarmClock, Archive, ArchiveRestore, Bell, CalendarDays, Check, MapPin, Paperclip, Pencil, Repeat, RotateCcw, Trash2, User, Users, Wallet } from 'lucide-react';
+import { AlarmClock, Archive, ArchiveRestore, Bell, CalendarDays, Check, MapPin, Paperclip, Pencil, Repeat, RotateCcw, Star, Trash2, User, Users, Wallet } from 'lucide-react';
 import { useStore, useViews } from '../store/DataProvider';
 import { useT } from '../i18n';
 import { useToast } from './Toast';
@@ -9,7 +9,7 @@ import { describeRepeat, formatDate, formatTimes } from '../lib/dates';
 import { formatMoney } from '../lib/format';
 import { ConfirmDialog, Modal } from './Modal';
 import { useMemoryActions } from './useMemoryActions';
-import { CategoryTile, DuePill, Switch } from './ui';
+import { CategoryTile, DuePill, Switch, cx } from './ui';
 
 function Row({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
@@ -80,6 +80,21 @@ export function MemoryDetail({ id, onClose }: { id: string | null; onClose: () =
               <Pencil className="size-4" /> Edit
             </button>
             <div className="ml-auto flex gap-1">
+              <button
+                type="button"
+                className={cx('icon-btn', m.favorite && 'text-amber-500')}
+                aria-label={m.favorite ? t('fav.remove') : t('fav.add')}
+                aria-pressed={!!m.favorite}
+                title={m.favorite ? t('fav.remove') : t('fav.add')}
+                onClick={() =>
+                  store
+                    .setFavorite(m.id, !m.favorite)
+                    .then(() => toast.success(m.favorite ? t('fav.removed') : t('fav.added')))
+                    .catch((e: Error) => toast.error(e.message))
+                }
+              >
+                <Star className="size-5" fill={m.favorite ? 'currentColor' : 'none'} />
+              </button>
               {m.status !== 'archived' ? (
                 <button type="button" className="icon-btn" aria-label="Archive" title="Archive" onClick={() => close(() => setStatus(m.id, 'archived'))}>
                   <Archive className="size-5" />

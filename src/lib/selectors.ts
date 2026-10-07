@@ -82,7 +82,7 @@ export function buildLendingViews(data: UserData): LendingView[] {
   }));
 }
 
-const byDue = (a: MemoryView, b: MemoryView) =>
+export const byDue = (a: MemoryView, b: MemoryView) =>
   (a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31') ||
   (a.dueTimes?.[0] ?? '99:99').localeCompare(b.dueTimes?.[0] ?? '99:99') ||
   a.title.localeCompare(b.title);

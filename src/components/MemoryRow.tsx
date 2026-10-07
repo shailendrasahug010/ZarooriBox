@@ -1,5 +1,5 @@
 import { useRef, useState, type PointerEvent } from 'react';
-import { AlarmClock, Check, Repeat, Users } from 'lucide-react';
+import { AlarmClock, Check, Repeat, Star, Users } from 'lucide-react';
 import { useT } from '../i18n';
 import { useStore } from '../store/DataProvider';
 import { getCategory } from '../lib/categories';
@@ -171,7 +171,10 @@ export function MemoryRow({ m, showCheck = true, compact = false }: { m: MemoryV
       >
         {!compact && <CategoryTile categoryId={m.categoryId} size="sm" />}
         <span className="min-w-0 flex-1">
-          <span className={cx('block truncate font-semibold', m.status === 'completed' && 'text-muted line-through decoration-ink/30')}>{m.title}</span>
+          <span className={cx('flex items-center gap-1 font-semibold', m.status === 'completed' && 'text-muted line-through decoration-ink/30')}>
+            {m.favorite && <Star className="size-3.5 shrink-0 fill-amber-400 text-amber-500" aria-label={t('fav.title')} />}
+            <span className="truncate">{m.title}</span>
+          </span>
           <span className="flex items-center gap-1.5 truncate text-[0.83rem] text-muted">
             {recurring && <Repeat className="size-3.5 shrink-0" aria-label="Repeats" />}
             {m.householdId && <Users className="size-3.5 shrink-0 text-brand-600" aria-label={t('fam.shared')} />}

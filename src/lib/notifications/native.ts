@@ -112,6 +112,32 @@ export function planLocalNotifications(data: UserData, settings: UserSettings, n
 
 export const isNativeApp = () => Capacitor.isNativePlatform();
 
+/**
+ * Android shows a notification as a pop-up over the screen, with sound, only when its
+ * channel is high importance. The plugin's default channel isn't, so alerts used to
+ * arrive silently in the shade. Android never raises an existing channel's importance,
+ * hence a new channel id.
+ */
+export const ALERT_CHANNEL = 'zaroori-alerts';
+let channelReady: Promise<void> | null = null;
+
+function ensureAlertChannel(): Promise<void> {
+  if (Capacitor.getPlatform() !== 'android') return Promise.resolve();
+  channelReady ??= LocalNotifications.createChannel({
+    id: ALERT_CHANNEL,
+    name: 'Reminders',
+    description: 'Due dates, medicine doses and appointments',
+    importance: 5,
+    visibility: 1,
+    vibration: true,
+    lights: true,
+    lightColor: '#0B5BD3',
+  }).catch(() => {
+    channelReady = null;
+  });
+  return channelReady;
+}
+
 const toStatus = (s: string): ChannelStatus => (s === 'granted' ? 'ready' : s === 'denied' ? 'blocked' : 'needs_permission');
 let cachedStatus: ChannelStatus = 'needs_permission';
 
@@ -127,7 +153,8 @@ export const nativeChannel: NotificationChannel = {
   },
   async send(p) {
     if (cachedStatus !== 'ready') return false;
-    await LocalNotifications.schedule({ notifications: [{ id: notificationId(`now:${p.tag ?? p.title}:${Date.now()}`), title: p.title, body: p.body }] });
+    await ensureAlertChannel();
+    await LocalNotifications.schedule({ notifications: [{ id: notificationId(`now:${p.tag ?? p.title}:${Date.now()}`), title: p.title, body: p.body, channelId: ALERT_CHANNEL }] });
     return true;
   },
 };
@@ -151,6 +178,7 @@ export async function syncNativeSchedule(data: UserData, settings: UserSettings)
   if (!settings.notifications.browser || (await refreshNativeStatus()) !== 'ready') return 0;
   const plan = planLocalNotifications(data, settings, new Date());
   if (plan.length) {
+    await ensureAlertChannel();
     await LocalNotifications.schedule({
       notifications: plan.map((n) => ({
         id: n.id,
@@ -158,6 +186,7 @@ export async function syncNativeSchedule(data: UserData, settings: UserSettings)
         body: n.body,
         schedule: { at: n.at, allowWhileIdle: true },
         actionTypeId: ACTION_TYPE,
+        channelId: ALERT_CHANNEL,
         extra: { kind: n.target.kind, id: n.target.id },
       })),
     });

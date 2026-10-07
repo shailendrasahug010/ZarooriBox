@@ -46,6 +46,7 @@ interface SeedMemory {
   notes?: string;
   status?: Memory['status'];
   times?: string[];
+  favorite?: boolean;
 }
 
 const MEMORIES: SeedMemory[] = [
@@ -57,7 +58,7 @@ const MEMORIES: SeedMemory[] = [
   { title: 'Netflix Subscription', categoryId: 'finance', subcategory: 'Subscriptions', inDays: 11, remind: 3, repeat: 'monthly', amount: 649 },
   { title: 'Amazon Prime Subscription', categoryId: 'finance', subcategory: 'Subscriptions', inDays: 18, remind: 3, repeat: 'yearly', amount: 1499 },
   { title: 'Bike PUC', categoryId: 'vehicle', subcategory: 'PUC', inDays: 19, remind: 7, repeat: 'half_yearly', description: 'KA-01 AB 1234' },
-  { title: 'Passport', categoryId: 'documents', subcategory: 'Passport', inDays: 21, remind: 30, description: 'Renewal — book Passport Seva appointment', notes: 'Need old passport, Aadhaar and 2 photos' },
+  { title: 'Passport', categoryId: 'documents', subcategory: 'Passport', inDays: 21, remind: 30, favorite: true, description: 'Renewal — book Passport Seva appointment', notes: 'Need old passport, Aadhaar and 2 photos' },
   { title: "Mother's Birthday", categoryId: 'personal', subcategory: 'Important dates', inDays: 26, remind: 3, repeat: 'yearly', notes: 'She mentioned wanting a new saree' },
   { title: 'Car Insurance', categoryId: 'vehicle', subcategory: 'Insurance', inDays: 34, remind: 30, repeat: 'yearly', amount: 14500, description: 'ICICI Lombard comprehensive policy' },
   { title: 'Water Filter Replacement', categoryId: 'home', subcategory: 'Maintenance', inDays: 40, remind: 7, repeat: 'yearly', location: 'Kitchen' },
@@ -66,7 +67,7 @@ const MEMORIES: SeedMemory[] = [
   { title: 'Health Insurance Premium', categoryId: 'finance', subcategory: 'Insurance', inDays: 63, remind: 15, repeat: 'yearly', amount: 22400 },
   { title: 'Driving Licence', categoryId: 'documents', subcategory: 'Driving licence', inDays: 410, remind: 30 },
   { title: 'Pest Control', categoryId: 'home', subcategory: 'Services', inDays: 52, remind: 3, repeat: 'quarterly' },
-  { title: 'Vitamin D', categoryId: 'health', subcategory: 'Medicines', inDays: 0, remind: 0, repeat: 'daily', times: ['09:00'], description: '1 tablet after breakfast' },
+  { title: 'Vitamin D', categoryId: 'health', subcategory: 'Medicines', inDays: 0, remind: 0, favorite: true, repeat: 'daily', times: ['09:00'], description: '1 tablet after breakfast' },
   { title: 'BP Tablet (Amlodipine 5mg)', categoryId: 'health', subcategory: 'Medicines', inDays: 0, remind: 0, repeat: 'daily', times: ['08:00', '20:00'] },
   { title: 'Dentist Check-up', categoryId: 'health', subcategory: 'Doctor visits', inDays: 6, remind: 1, times: ['17:30'], location: 'Smile Dental, Indiranagar' },
   { title: 'Team Review Meeting', categoryId: 'personal', subcategory: 'Meetings', inDays: 2, remind: 0, times: ['11:00'], location: 'Google Meet' },
@@ -108,6 +109,7 @@ export function buildSeed(userId: ID): UserData {
       subcategory: s.subcategory,
       dueDate,
       dueTimes: s.times ?? null,
+      favorite: s.favorite ?? false,
       status: s.status ?? 'active',
       amount: s.amount ?? null,
       currency: 'INR',

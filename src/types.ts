@@ -81,6 +81,8 @@ export interface Memory {
   lastCompletedAt?: Timestamp | null;
   /** Set when the memory is shared with the owner's family. */
   householdId?: ID | null;
+  /** Starred by the person, listed under Favourites. */
+  favorite?: boolean;
 }
 
 export interface Reminder {
