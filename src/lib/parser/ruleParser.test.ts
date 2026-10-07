@@ -196,3 +196,30 @@ describe('times, medicines and bookings', () => {
     expect(parseQuickAdd('buy tablets and bread', ctx).kind).toBe('shopping');
   });
 });
+
+describe('tidying what people type', () => {
+  it('fixes common misspellings so the date is understood', () => {
+    const r = p('remind me tommorow to call amit');
+    expect(r.title).toBe('Call Amit');
+    expect(r.dueDate).toBe('2026-10-07');
+    expect(p('pay electricty bill evry month on 5th')).toMatchObject({ title: 'Pay Electricity Bill', dueDate: '2026-11-05', repeat: { frequency: 'monthly' } });
+    expect(p('renew pasport on 12 febuary 2027')).toMatchObject({ title: 'Renew Passport', dueDate: '2027-02-12' });
+    expect(p('water plants everyday mornig')).toMatchObject({ title: 'Water Plants', times: ['08:00'], repeat: { frequency: 'daily' } });
+  });
+
+  it('drops "reminder for", "set a reminder to", "I have to" from the name', () => {
+    expect(p('reminder for doctor appointment on friday at 5 pm').title).toBe('Doctor Appointment');
+    expect(p('set a reminder to call papa tomorrow 7pm')).toMatchObject({ title: 'Call Papa', times: ['19:00'] });
+    expect(p('i have to renew car insurance 12 feb 2027').title).toBe('Renew Car Insurance');
+    expect(p('Remind me about mom birthday on 15 march').title).toBe('Mom Birthday');
+  });
+
+  it('keeps short forms in capitals', () => {
+    expect(p('take bp tablet daily 8am and 8pm').title).toBe('BP Tablet');
+    expect(p('need to pay lic premium 20 nov').title).toBe('Pay LIC Premium');
+  });
+
+  it('leaves correct words alone', () => {
+    expect(p('Tomorrow call the bank').title).toBe('Call the Bank');
+  });
+});

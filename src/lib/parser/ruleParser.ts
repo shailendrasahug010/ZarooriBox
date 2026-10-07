@@ -429,7 +429,10 @@ function cleanThing(thing: string): string {
 
 function cleanTitle(s: string): string {
   let t = s
-    .replace(/^\s*(?:please\s+)?(?:remind\s+me\s+(?:to|about|of|that)|remember\s+(?:to|that)|don'?t\s+forget\s+(?:to|about|that)?|note\s*:?|todo\s*:?)\s+/i, '')
+    .replace(
+      /^\s*(?:please\s+)?(?:(?:can\s+you\s+|pls\s+)?remind\s+me(?:\s+(?:to|about|of|that|for))?|(?:set|add|create|make)\s+(?:a\s+|an\s+)?(?:reminder|alarm|alert)(?:\s+(?:to|for|about|of))?|reminder(?:\s+(?:to|for|about|of))?|remember\s+(?:to|that)|don'?t\s+forget\s+(?:to|about|that)?|(?:i\s+)?(?:have|need|got)\s+to|note\s*:?|todo\s*:?|to\s*-?\s*do\s*:?)\s+/i,
+      '',
+    )
     .replace(/\b(?:expires?|expiring|expiry(?:\s+date)?(?:\s+is)?|is\s+due|are\s+due|due\s+date(?:\s+is)?|due|valid\s+(?:till|until|upto|up\s+to)|ends?)\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -444,11 +447,63 @@ function cleanTitle(s: string): string {
   return t;
 }
 
+// ---------- Spelling ----------
+
+/** Common misspellings and shorthand in quick notes, fixed before parsing. */
+const TYPOS: [RegExp, string][] = [
+  [/\b(?:tomm?or+ow+|tomm?or+ow|tomorow|tommorrow|tomorrw|tmrw?|tmw|2mor+ow|2moro|tomo)\b/gi, 'tomorrow'],
+  [/\b(?:todya|tday|tdy|2day)\b/gi, 'today'],
+  [/\b(?:yesterady|yesturday|yday)\b/gi, 'yesterday'],
+  [/\b(?:evry|evrey|everey|eveyr)\b/gi, 'every'],
+  [/\beveryday\b/gi, 'every day'],
+  [/\b(?:dialy|daliy|daly)\b/gi, 'daily'],
+  [/\b(?:weekley|wekly|weekily)\b/gi, 'weekly'],
+  [/\b(?:monthy|montly|monthley|mnthly)\b/gi, 'monthly'],
+  [/\b(?:yeraly|yearley|yearlly)\b/gi, 'yearly'],
+  [/\b(?:remaind|remmind|reminde|remined)\s+me\b/gi, 'remind me'],
+  [/\b(?:remainder|reminer|remindr)\b/gi, 'reminder'],
+  [/\b(?:janury|januray|janaury)\b/gi, 'January'],
+  [/\b(?:febuary|feburary|februray|febraury)\b/gi, 'February'],
+  [/\b(?:apirl|aprl)\b/gi, 'April'],
+  [/\b(?:agust|augest|auguts)\b/gi, 'August'],
+  [/\b(?:septmber|setpember|sepember|septembar)\b/gi, 'September'],
+  [/\b(?:ocotber|octobar|octuber|octomber)\b/gi, 'October'],
+  [/\b(?:novmber|novembar|novemeber)\b/gi, 'November'],
+  [/\b(?:decmber|decembar|decemeber)\b/gi, 'December'],
+  [/\b(?:mondy|monady)\b/gi, 'Monday'],
+  [/\b(?:tuesady|tuseday|teusday|tusday)\b/gi, 'Tuesday'],
+  [/\b(?:wensday|wednsday|wedensday|wednesady|wenesday)\b/gi, 'Wednesday'],
+  [/\b(?:thursady|thrusday|thurday|thusday)\b/gi, 'Thursday'],
+  [/\b(?:firday|fridy|frday)\b/gi, 'Friday'],
+  [/\b(?:saturaday|saterday|satuday|saturady)\b/gi, 'Saturday'],
+  [/\b(?:sundy|snday)\b/gi, 'Sunday'],
+  [/\b(?:mornig|moring|mrng|mornin)\b/gi, 'morning'],
+  [/\b(?:evning|evenning|evng)\b/gi, 'evening'],
+  [/\b(?:nite|nyt)\b/gi, 'night'],
+  [/\b(?:medicin|medecine|medicene|medcine)\b/gi, 'medicine'],
+  [/\b(?:tablate|tablat|tabelt)\b/gi, 'tablet'],
+  [/\b(?:insurence|insurace|insuranse|insurnace)\b/gi, 'insurance'],
+  [/\b(?:electricty|electrcity|elecricity|electicity)\b/gi, 'electricity'],
+  [/\b(?:apointment|appointmnet|appoinment|appointmant)\b/gi, 'appointment'],
+  [/\b(?:birtday|brithday|bday|b'day|birthdy)\b/gi, 'birthday'],
+  [/\b(?:anniversery|aniversary|anniversay)\b/gi, 'anniversary'],
+  [/\b(?:meting|meeitng|meetng)\b/gi, 'meeting'],
+  [/\b(?:docter|doctr|dcotor)\b/gi, 'doctor'],
+  [/\b(?:pasport|passprt)\b/gi, 'passport'],
+  [/\b(?:licence|lisence|liscense|lisense)\b/gi, 'licence'],
+  [/\b(?:recharg|rechage)\b/gi, 'recharge'],
+];
+
+/** Fixes common misspellings so dates are understood and the title reads well. */
+export function fixTypos(text: string): string {
+  return TYPOS.reduce((s, [re, word]) => s.replace(re, (m) => (m[0] === m[0].toUpperCase() && m[0] !== m[0].toLowerCase() ? word.charAt(0).toUpperCase() + word.slice(1) : word)), text);
+}
+
 // ---------- Main ----------
 
 export function parseQuickAdd(raw: string, ctx: ParseContext): ParsedQuickAdd {
   // Hindi / Hinglish phrases become English the extractors below understand.
-  const text = normalizeHindi(raw.trim().replace(/\s+/g, ' '));
+  const text = normalizeHindi(fixTypos(raw.trim().replace(/\s+/g, ' ')));
   const today = ctx.today;
   const cur = new Cursor(text);
 

@@ -27,6 +27,7 @@ export function nowStamp(): string {
 const LOWER = new Set(['a', 'an', 'the', 'of', 'to', 'for', 'and', 'or', 'in', 'on', 'at', 'from', 'with', 'by']);
 const ACRONYMS = new Set([
   'ro', 'ac', 'puc', 'pan', 'emi', 'sip', 'led', 'tv', 'dth', 'rc', 'itr', 'fd', 'lic', 'dl', 'id', 'gst', 'ppf', 'nps', 'usb', 'upi', 'atm', 'otp', 'kyc',
+  'bp', 'pf', 'ptm', 'opd', 'ecg', 'mri', 'ct', 'pnr', 'irctc', 'tds', 'ups', 'gps', 'cv', 'sbi', 'hdfc', 'icici', 'ca', 'nri', 'mf', 'esi', 'cng', 'lpg', 'ott',
 ]);
 
 /** "car insurance" -> "Car Insurance", "ro filter change" -> "RO Filter Change". */
@@ -66,4 +67,19 @@ export function normalizePhone(input: string): string | null {
     else digits = `+${digits}`;
   }
   return /^\+[1-9]\d{6,14}$/.test(digits) ? digits : null;
+}
+
+/**
+ * A short name for a long note: its first sentence or clause, cut at a word
+ * boundary. "Call the plumber about the kitchen tap, it has been leaking for a
+ * week and…" -> "Call the plumber about the kitchen tap".
+ */
+export function shortTitle(text: string, max = 60): string {
+  const t = text.replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  const clause = t.split(/(?<=\S)\s*[.!?;,:–—]\s+|\s+(?:because|so that|which|and then|but)\s+/i)[0].trim();
+  if (clause.length >= 12 && clause.length <= max) return clause;
+  const cut = t.slice(0, max + 1);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > 20 ? cut.slice(0, space) : t.slice(0, max)).replace(/[\s,.;:–—-]+$/, '')}…`;
 }

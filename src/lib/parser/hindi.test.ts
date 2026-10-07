@@ -46,3 +46,14 @@ describe('Hindi and Hinglish Quick Add (offline parser)', () => {
     expect(parseQuickAdd('Call Kalpana tomorrow', ctx).title).toBe('Call Kalpana');
   });
 });
+
+describe('Hinglish times', () => {
+  it('reads subah / shaam / raat and baje', () => {
+    expect(parseQuickAdd('mujhe kal subah 8 baje dawai lena hai', ctx)).toMatchObject({ title: 'Dawai', dueDate: '2026-10-08', times: ['08:00'], subcategory: 'Medicines' });
+    expect(parseQuickAdd('shaam 6:30 baje doctor', ctx).times).toEqual(['18:30']);
+    expect(parseQuickAdd('raat 10 baje dawai', ctx).times).toEqual(['22:00']);
+    expect(parseQuickAdd('कल सुबह 9 बजे डॉक्टर', ctx)).toMatchObject({ dueDate: '2026-10-08', times: ['09:00'] });
+    // Without a part of the day, 4 o'clock means the afternoon.
+    expect(parseQuickAdd('kal 4 baje meeting', ctx)).toMatchObject({ title: 'Meeting', times: ['16:00'] });
+  });
+});

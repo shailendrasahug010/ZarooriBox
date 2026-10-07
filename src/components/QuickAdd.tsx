@@ -11,6 +11,10 @@ import { useStore } from '../store/DataProvider';
 import { useToast } from './Toast';
 import { useUI } from './UIProvider';
 import { cx } from './ui';
+import { AddedSheet, type AddedItem } from './AddedSheet';
+
+/** Longest Quick Add note. Long spoken notes are kept whole; the extra words go into the item's notes. */
+const MAX_TEXT = 1000;
 
 const EXAMPLES: MessageKey[] = ['qa.ex.1', 'qa.ex.2', 'qa.ex.3', 'qa.ex.4', 'qa.ex.5', 'qa.ex.6', 'qa.ex.7'];
 
@@ -94,6 +98,7 @@ export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = fals
   const scanRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState(false);
+  const [added, setAdded] = useState<AddedItem | null>(null);
   const [exampleIdx, setExampleIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const hintId = useId();
@@ -169,7 +174,7 @@ export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = fals
       inputRef.current?.focus();
       return;
     }
-    if (value.length > 300) {
+    if (value.length > MAX_TEXT) {
       toast.error(t('qa.tooLong'));
       return;
     }
@@ -181,20 +186,38 @@ export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = fals
       setAiPreview(null);
       setFlash(true);
       window.setTimeout(() => setFlash(false), 900);
-      const undo =
-        res.kind === 'memory' && res.id
-          ? { label: 'Undo', onClick: () => void store.deleteMemory(res.id!) }
-          : res.kind === 'lending' && res.id
-            ? { label: 'Undo', onClick: () => void store.deleteLending(res.id!) }
-            : undefined;
-      toast.success(res.message, undo ? { ...undo, label: t('act.undo') } : undefined);
-      onAdded?.();
+      if ((res.kind === 'memory' || res.kind === 'lending') && res.id) {
+        // Show what was saved: name, date, time, how often and the reminder.
+        const title = res.kind === 'memory' ? (store.getSnapshot().memories.find((m) => m.id === res.id)?.title ?? parsed.title) : parsed.title;
+        setAdded({ kind: res.kind, id: res.id, title, parsed });
+      } else {
+        toast.success(res.message);
+        onAdded?.();
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('qa.failed'));
     } finally {
       setBusy(false);
       inputRef.current?.focus();
     }
+  };
+
+  const closeAdded = () => {
+    setAdded(null);
+    onAdded?.();
+  };
+  const undoAdded = () => {
+    const a = added;
+    setAdded(null);
+    if (!a) return;
+    void (a.kind === 'memory' ? store.deleteMemory(a.id) : store.deleteLending(a.id))
+      .then(() => toast.success(t('added.removed')))
+      .catch(() => toast.error(t('qa.failed')));
+  };
+  const editAdded = () => {
+    const a = added;
+    setAdded(null);
+    if (a) navigate(`/app/edit/${a.id}`);
   };
 
   const openDetails = () => {
@@ -253,7 +276,7 @@ export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = fals
           autoComplete="off"
           enterKeyHint="done"
           aria-describedby={hintId}
-          maxLength={300}
+          maxLength={MAX_TEXT}
           placeholder={listening ? t('qa.listening') : t('qa.try', { example: t(EXAMPLES[exampleIdx]) })}
           className={cx(
             'min-w-0 flex-1 bg-transparent font-medium text-ink outline-none placeholder:font-normal placeholder:text-muted/80',
@@ -324,6 +347,7 @@ export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = fals
           </div>
         </>
       )}
+      <AddedSheet item={added} onDone={closeAdded} onEdit={editAdded} onUndo={undoAdded} />
     </form>
   );
 }

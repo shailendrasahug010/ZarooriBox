@@ -37,7 +37,7 @@ function unitWord(u: string): 'day' | 'week' | 'month' | 'year' {
 const ordinal = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 const DEVANAGARI = /[ऀ-ॿ]/;
-const HINGLISH = /\b(aaj|kal|parso|parson|agle|har|tareekh|tarikh|ko|se|diye|diya|liye|liya|lena|lana|kharidna|hai|rupaye|rupay)\b/i;
+const HINGLISH = /\b(aaj|kal|parso|parson|agle|har|tareekh|tarikh|ko|se|diye|diya|liye|liya|lena|lana|kharidna|hai|rupaye|rupay|baje|subah|shaam|sham|raat|dopahar|mujhe|yaad)\b/i;
 
 /** True when the sentence looks like Hindi or Hinglish. */
 export function looksHindi(text: string): boolean {
@@ -56,6 +56,24 @@ export function normalizeHindi(raw: string): string {
   // Lending: "राहुल को 500 दिए", "Rahul ko 500 diye", "अमित से सीढ़ी ली"
   s = s.replace(/^(.+?)\s+(?:को|ko)\s+(.+?)\s+(?:उधार\s+)?(?:दिए|दिये|दिया|दी|दे\s+दिए|diye|diya|di)\s*(?:हैं|है|hai|hain)?\s*[।.!]?$/iu, (_, who: string, what: string) => `lent ${what} to ${who}`);
   s = s.replace(/^(.+?)\s+(?:से|se)\s+(.+?)\s+(?:उधार\s+)?(?:लिए|लिये|लिया|ली|liye|liya|li)\s*(?:हैं|है|hai|hain)?\s*[।.!]?$/iu, (_, who: string, what: string) => `borrowed ${what} from ${who}`);
+
+  // Times: "सुबह 8 बजे", "shaam 6:30 baje", "8 baje raat", "9 बजे"
+  const PART = '(सुबह|subah|subeh|सवेरे|savere|दोपहर|dopahar|dopehar|शाम|shaam|sham|रात|raat|rat)';
+  const CLOCK = '(\\d{1,2})(?:[:.](\\d{2}))?';
+  const BAJE = '(?:\\s*(?:बजे|baje|bje))';
+  const at = (part: string | undefined, h: string, m?: string) => {
+    let hour = Number(h);
+    const p = (part ?? '').toLowerCase();
+    if (/^(दोपहर|dopahar|dopehar|शाम|shaam|sham)$/.test(p) && hour < 12) hour += 12;
+    if (/^(रात|raat|rat)$/.test(p) && hour >= 5 && hour < 12) hour += 12;
+    if (/^(रात|raat|rat)$/.test(p) && hour === 12) hour = 0;
+    // Without a part of the day, "4 बजे" means the afternoon, "9 बजे" the morning.
+    if (!p && hour >= 1 && hour <= 6) hour += 12;
+    return ` at ${String(hour).padStart(2, '0')}:${m ?? '00'} `;
+  };
+  s = s.replace(new RegExp(`${B}${PART}(?:\\s+(?:को|ko|में|mein))?\\s+${CLOCK}${BAJE}?${E}`, 'giu'), (_, part: string, h: string, m?: string) => at(part, h, m));
+  s = s.replace(new RegExp(`${B}${CLOCK}${BAJE}\\s+${PART}${E}`, 'giu'), (_, h: string, m: string | undefined, part: string) => at(part, h, m));
+  s = s.replace(new RegExp(`${B}${CLOCK}${BAJE}${E}`, 'giu'), (_, h: string, m?: string) => at(undefined, h, m));
 
   // Repeats: "हर 6 महीने", "हर महीने", "har saal", "रोज़"
   s = s.replace(new RegExp(`${B}(?:हर|har)\\s+(\\d+)\\s+${UNIT}${E}`, 'giu'), (_, n: string, u: string) => ` every ${n} ${unitWord(u)}s `);
@@ -78,9 +96,15 @@ export function normalizeHindi(raw: string): string {
   // "500 रुपये" -> "₹500"
   s = s.replace(new RegExp(`${B}(\\d[\\d,]*(?:\\.\\d+)?)\\s*(?:रुपये|रुपए|रुपया|रु\\.?|rupaye|rupay|rupees?|rs\\.?)${E}`, 'giu'), (_, n: string) => ` ₹${n} `);
 
-  // Little words left at the ends: "… को", "… है"
+  // Little words left at the ends: "मुझे …", "… लेना है", "… को"
+  s = s.replace(/^\s*(?:मुझे|mujhe|muje|humein|hume|हमें|याद\s+(?:दिलाना|दिला\s+देना)|yaad\s+(?:dilana|dila\s+dena))\s+/iu, '');
+  for (let i = 0; i < 3; i++) {
+    s = s.replace(
+      /\s+(?:को|ko|है|हैं|hai|hain|करना|भरना|देना|लेना|लेनी|खाना|खानी|पीना|lena|leni|khana|khani|peena|karna|bharna|dena|yaad\s+dilana)(?=\s*[।.!]?\s*$|\s+(?:on|every|today|tomorrow|next|in|at)\b)/giu,
+      ' ',
+    );
+  }
   s = s
-    .replace(/\s+(?:को|ko|है|हैं|hai|hain|करना|भरना|देना)(?=\s*$|\s+(?:on|every|today|tomorrow|next|in)\b)/giu, ' ')
     .replace(/[।]/g, '.')
     .replace(/\s+/g, ' ')
     .trim();

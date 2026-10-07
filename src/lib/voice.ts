@@ -84,6 +84,73 @@ function mapWebError(code: string): VoiceError {
   return 'failed';
 }
 
+/** Longest a single voice note may run; the person can always tap stop sooner. */
+export const MAX_LISTEN_MS = 120_000;
+
+const join = (...parts: string[]) => parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+
+/**
+ * Speech recognizers stop by themselves at the first pause, which cut long
+ * sentences short. This keeps listening: each time a stretch of speech ends, the
+ * words are kept and recognition starts again, until the person taps stop, a
+ * stretch ends with nothing new (they have finished), or MAX_LISTEN_MS passes.
+ */
+export function listenInStretches(
+  h: VoiceHandlers,
+  startStretch: (stretch: { partial(text: string): void; done(final?: string): void; fail(error: VoiceError): void }) => { stop(): void } | null,
+  now: () => number = Date.now,
+): VoiceSession | null {
+  const began = now();
+  let kept = '';
+  let finished = false;
+  let stopping = false;
+  let current: { stop(): void } | null = null;
+
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    h.onEnd(kept);
+  };
+
+  const run = (): boolean => {
+    let heard = '';
+    let closed = false;
+    current = startStretch({
+      partial(text) {
+        if (closed || finished) return;
+        heard = text.trim();
+        h.onPartial(join(kept, heard));
+      },
+      done(final) {
+        if (closed || finished) return;
+        closed = true;
+        if (final && final.trim().length >= heard.length) heard = final.trim();
+        kept = join(kept, heard);
+        h.onPartial(kept);
+        // Silence after speech, a tap on stop, or the time limit ends the note.
+        if (stopping || !heard || now() - began > MAX_LISTEN_MS || !run()) finish();
+      },
+      fail(error) {
+        if (closed || finished) return;
+        closed = true;
+        finished = true;
+        // Anything already heard is kept; a failure on the first stretch is reported.
+        if (kept || heard) h.onEnd(join(kept, heard));
+        else h.onError(error);
+      },
+    });
+    return !!current;
+  };
+
+  if (!run()) return null;
+  return {
+    stop() {
+      stopping = true;
+      current?.stop();
+    },
+  };
+}
+
 export const webVoice: VoiceInput = {
   kind: 'web',
   isSupported: () => webCtor() !== null,
@@ -93,32 +160,40 @@ export const webVoice: VoiceInput = {
       h.onError('unsupported');
       return null;
     }
-    const rec = new Ctor();
-    rec.lang = lang;
-    rec.interimResults = true;
-    rec.continuous = false;
-    rec.maxAlternatives = 1;
-    let text = '';
-    let failed = false;
-    rec.onresult = (e) => {
-      text = Array.from(e.results, (r) => r[0].transcript).join(' ').replace(/\s+/g, ' ').trim();
-      h.onPartial(text);
-    };
-    rec.onerror = (e) => {
-      if (e.error === 'aborted') return;
-      failed = true;
-      h.onError(mapWebError(e.error));
-    };
-    rec.onend = () => {
-      if (!failed) h.onEnd(text);
-    };
-    try {
-      rec.start();
-    } catch {
-      h.onError('failed');
-      return null;
-    }
-    return { stop: () => rec.stop() };
+    let first = true;
+    return listenInStretches(h, (stretch) => {
+      const rec = new Ctor();
+      rec.lang = lang;
+      rec.interimResults = true;
+      // One stretch at a time: "continuous" repeats words on Android Chrome.
+      rec.continuous = false;
+      rec.maxAlternatives = 1;
+      let text = '';
+      let failed = false;
+      const isFirst = first;
+      first = false;
+      rec.onresult = (e) => {
+        text = Array.from(e.results, (r) => r[0].transcript).join(' ').replace(/\s+/g, ' ').trim();
+        stretch.partial(text);
+      };
+      rec.onerror = (e) => {
+        if (e.error === 'aborted') return;
+        // A later stretch with no speech just means the person has finished.
+        if (e.error === 'no-speech' && !isFirst) return;
+        failed = true;
+        stretch.fail(mapWebError(e.error));
+      };
+      rec.onend = () => {
+        if (!failed) stretch.done(text);
+      };
+      try {
+        rec.start();
+      } catch {
+        if (isFirst) h.onError('failed');
+        return null;
+      }
+      return { stop: () => rec.stop() };
+    });
   },
 };
 
@@ -145,42 +220,62 @@ export const nativeVoice: VoiceInput = {
       return null;
     }
 
-    let text = '';
-    let ended = false;
+    // One set of listeners serves every stretch; `active` is the stretch in progress.
+    let active: { partial(text: string): void; done(final?: string): void; fail(error: VoiceError): void } | null = null;
+    let heard = '';
     const handles: PluginListenerHandle[] = [];
-    const finish = () => {
-      if (ended) return;
-      ended = true;
-      handles.forEach((x) => void x.remove());
-      h.onEnd(text);
+    const end = async () => {
+      const stretch = active;
+      if (!stretch) return;
+      active = null;
+      // The recognizer can hold back the last words; ask for them before moving on.
+      const last = await NativeSpeech.getLastPartialResult().catch(() => null);
+      stretch.done(last?.available && last.text.trim().length > heard.length ? last.text : heard);
     };
     handles.push(
       await NativeSpeech.addListener('partialResults', (d) => {
-        text = (d.accumulatedText ?? d.matches?.[0] ?? text).trim();
-        h.onPartial(text);
+        const text = (d.matches?.[0] ?? d.accumulatedText ?? '').trim();
+        if (!text) return;
+        heard = text;
+        active?.partial(text);
       }),
       await NativeSpeech.addListener('listeningState', (d) => {
-        if (d.status === 'stopped' || d.state === 'stopped') finish();
+        if (d.status === 'stopped' || d.state === 'stopped') void end();
       }),
     );
-    NativeSpeech.start({ language: lang, partialResults: true, popup: false, maxResults: 1, addPunctuation: false })
-      .then((r) => {
-        // Some devices return the final words here instead of via partialResults.
-        if (r?.matches?.[0]) text = r.matches[0].trim();
-      })
-      .catch(() => {
-        if (!ended) {
-          ended = true;
-          handles.forEach((x) => void x.remove());
-          if (text) h.onEnd(text);
-          else h.onError('no-speech');
-        }
-      });
-    return {
-      stop: () => {
-        void NativeSpeech.stop().finally(finish);
-      },
+    const cleanup = (fn: (text: string) => void) => (text: string) => {
+      handles.forEach((x) => void x.remove());
+      fn(text);
     };
+    const wrapped: VoiceHandlers = { onPartial: h.onPartial, onEnd: cleanup(h.onEnd), onError: (e) => cleanup(() => h.onError(e))('') };
+
+    let first = true;
+    return listenInStretches(wrapped, (stretch) => {
+      const isFirst = first;
+      first = false;
+      heard = '';
+      active = stretch;
+      NativeSpeech.start({ language: lang, partialResults: true, popup: false, maxResults: 1, addPunctuation: false, muteRecognizerBeep: true })
+        .then((r) => {
+          // Some devices return the final words here instead of via partialResults.
+          const final = r?.matches?.[0]?.trim();
+          if (final && final.length > heard.length) heard = final;
+        })
+        .catch(() => {
+          if (active !== stretch) return;
+          active = null;
+          // Nothing more was said: the note is complete. Silence on the very first try is an error.
+          if (isFirst && !heard) stretch.fail('no-speech');
+          else stretch.done(heard);
+        });
+      return {
+        stop: () => {
+          void NativeSpeech.stop()
+            .catch(() => {})
+            .finally(() => window.setTimeout(() => void end(), 400));
+        },
+      };
+    });
   },
 };
 

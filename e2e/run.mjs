@@ -32,10 +32,20 @@ const { ctx, page } = await newPage();
 // The main walk-through has notifications allowed, so the start-up prompt stays away.
 await ctx.grantPermissions(['notifications'], { origin: BASE });
 const email = `meera${Date.now()}@example.com`;
-const quickAdd = async (text) => {
+/** The pop-up Quick Add shows after saving: checks it, then closes it with Done. */
+const confirmAdded = async (p, title, rows = []) => {
+  const dialog = p.getByRole('dialog', { name: 'Added' });
+  await dialog.waitFor();
+  if (title) await dialog.getByText(title, { exact: true }).waitFor();
+  for (const row of rows) await dialog.getByText(row).first().waitFor();
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  await dialog.waitFor({ state: 'detached' });
+};
+const quickAdd = async (text, title) => {
   await page.fill('#quick-add-input', text);
   await page.press('#quick-add-input', 'Enter');
   await page.waitForTimeout(250);
+  if (await page.getByRole('dialog', { name: 'Added' }).count()) await confirmAdded(page, title);
 };
 
 await step('Protected route redirects to login when signed out', async () => {
@@ -82,17 +92,31 @@ await step('Quick Add preview + memory creation (spec example)', async () => {
   await page.getByText('Vehicle · Insurance').waitFor();
   await page.getByText('30 days before').waitFor();
   await page.press('#quick-add-input', 'Enter');
-  await page.getByText('Remembered: Car Insurance').waitFor();
+  // The pop-up says what was saved, when, how often and the reminder.
+  await confirmAdded(page, 'Car Insurance', ['Vehicle · Insurance', /12 Feb 2027/, 'Just once', '30 days before']);
   expect((await page.inputValue('#quick-add-input')) === '', 'input should clear');
 });
 
 await step('Quick Add lending and shopping', async () => {
-  await quickAdd('I lent Rahul ₹2000 today');
-  await page.getByText('Rahul owes me ₹2,000').first().waitFor();
+  await quickAdd('I lent Rahul ₹2000 today', 'Rahul owes me ₹2,000');
   await quickAdd('Buy milk, bread and 2 kg rice');
   await page.getByText('3 items added to shopping').waitFor();
-  await quickAdd('RO filter change every 6 months');
-  await page.getByText('Remembered: RO Filter Change').waitFor();
+  await page.fill('#quick-add-input', 'RO filter change every 6 months');
+  await page.press('#quick-add-input', 'Enter');
+  await confirmAdded(page, 'RO Filter Change', ['Every 6 months']);
+});
+
+await step('Quick Add tidies a misspelt note and Undo in the pop-up removes it', async () => {
+  await page.fill('#quick-add-input', 'remind me tommorow to call amit at 6pm');
+  await page.press('#quick-add-input', 'Enter');
+  const dialog = page.getByRole('dialog', { name: 'Added' });
+  await dialog.getByText('Call Amit', { exact: true }).waitFor();
+  await dialog.getByText('Tomorrow').first().waitFor();
+  await dialog.getByText('6:00 pm').first().waitFor();
+  await dialog.getByRole('button', { name: 'Undo' }).click();
+  await page.getByText('Removed').first().waitFor();
+  await page.goto(`${BASE}/app/search?q=amit`);
+  await page.getByText('Nothing found for “amit”').waitFor();
 });
 
 await step('Add Memory form validation + create due-today item', async () => {
@@ -291,7 +315,7 @@ await step('First-run setup: three steps, first item added, then the dashboard',
   await page.getByText('Add your first one').waitFor();
   await page.fill('#quick-add-input', 'Pay rent on the 5th every month');
   await page.press('#quick-add-input', 'Enter');
-  await page.getByText(/Remembered/).first().waitFor();
+  await confirmAdded(page, 'Pay Rent', [/month/i]);
   await page.getByRole('button', { name: 'Go to my ZarooriBox' }).click();
   await page.waitForURL(/\/app$/);
   await page.reload();
@@ -321,6 +345,7 @@ await step('Share to ZarooriBox puts the shared text into Quick Add', async () =
   await page.getByText('Add to ZarooriBox').first().waitFor();
   expect((await page.inputValue('#quick-add-input')) === 'Gas cylinder booking on 20 October', 'shared text prefilled');
   await page.press('#quick-add-input', 'Enter');
+  await confirmAdded(page);
   await page.waitForURL(/\/app$/);
   await page.goto(`${BASE}/app/search?q=cylinder`);
   await page.getByText(/Gas Cylinder/i).first().waitFor();
@@ -394,8 +419,39 @@ await step('Voice Quick Add: mic fills the box while speaking, then saves', asyn
   await p.getByText('12 Feb 2027').first().waitFor();
   await p.getByRole('button', { name: 'Add by voice' }).waitFor();
   await p.getByRole('button', { name: 'Add', exact: true }).click();
-  await p.getByText(/Added|Saved|remind/i).first().waitFor();
+  await confirmAdded(p, 'Car Insurance');
   expect((await p.inputValue('#quick-add-input')) === '', 'cleared after save');
+  await v.ctx.close();
+});
+
+await step('Voice keeps listening after a pause, so long sentences aren’t cut off', async () => {
+  const v = await newPage({ width: 390, height: 844 }, true);
+  const p = v.page;
+  await v.ctx.addInitScript(() => {
+    const said = ['Pay the electricity bill', 'and the water bill on the 5th', ''];
+    let n = 0;
+    class PausingRecognition {
+      start() {
+        const words = said[n++] ?? '';
+        setTimeout(() => {
+          if (words) this.onresult?.({ results: [{ isFinal: true, 0: { transcript: words } }] });
+          // The browser stops by itself at each pause.
+          setTimeout(() => this.onend?.(), 60);
+        }, 60);
+      }
+      stop() {}
+      abort() {}
+    }
+    window.SpeechRecognition = window.webkitSpeechRecognition = PausingRecognition;
+  });
+  await p.goto(`${BASE}/login`);
+  await p.getByRole('button', { name: /Try the demo/ }).click();
+  await p.waitForURL('**/app');
+  await p.getByRole('button', { name: 'Add by voice' }).click();
+  await p.waitForFunction(() => document.querySelector('#quick-add-input')?.value === 'Pay the electricity bill and the water bill on the 5th', null, { timeout: 3000 }).catch(async () => {
+    throw new Error(`the box holds "${await p.inputValue('#quick-add-input')}"`);
+  });
+  await p.getByRole('button', { name: 'Add by voice' }).waitFor();
   await v.ctx.close();
 });
 
