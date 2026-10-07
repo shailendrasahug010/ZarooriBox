@@ -5,6 +5,7 @@ import type { User as SbUser } from '@supabase/supabase-js';
 import type { User } from '../types';
 import { getSupabase } from '../data/supabase';
 import type { AuthEvent, AuthService } from './types';
+import { createLocalAuth } from './localAuth';
 
 /** Deep link the phone app registers (android/ios projects). Add it to Supabase Auth → URL configuration. */
 export const NATIVE_AUTH_CALLBACK = 'app.lifebox://auth-callback';
@@ -33,8 +34,49 @@ const toUser = (u: SbUser): User => ({
   isDemo: u.is_anonymous ?? false,
 });
 
+/** Set while the on-device demo is in use (guest sign-in switched off on the server). */
+const DEVICE_DEMO = 'lifebox:v1:device-demo';
+
+function deviceDemoOn(): boolean {
+  try {
+    return localStorage.getItem(DEVICE_DEMO) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function setDeviceDemo(on: boolean) {
+  try {
+    if (on) localStorage.setItem(DEVICE_DEMO, '1');
+    else localStorage.removeItem(DEVICE_DEMO);
+  } catch {
+    /* private mode */
+  }
+}
+
+/** Which sign-in methods the server has switched on (Supabase Auth → Sign In / Providers). */
+async function providers(): Promise<Record<string, boolean> | null> {
+  try {
+    const url = import.meta.env.VITE_SUPABASE_URL as string;
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+    const res = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: key } });
+    return res.ok ? ((await res.json()).external as Record<string, boolean>) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Where the confirmation and reset emails should bring people back to. */
+const appLink = (path: string) => (Capacitor.isNativePlatform() ? NATIVE_AUTH_CALLBACK : `${location.origin}${path}`);
+
 export function createSupabaseAuth(): AuthService {
   const sb = getSupabase();
+  const device = createLocalAuth();
+  const deviceDemo = async () => {
+    const u = await device.signInDemo();
+    setDeviceDemo(true);
+    return { ...u, onDevice: true };
+  };
   const fail = (e: { message: string } | null) => {
     if (e) throw new AuthError(e.message);
   };
@@ -42,24 +84,34 @@ export function createSupabaseAuth(): AuthService {
     mode: 'supabase',
     supportsGoogle: true,
     async getCurrentUser() {
+      if (deviceDemoOn()) {
+        const u = await device.getCurrentUser();
+        if (u?.isDemo) return { ...u, onDevice: true };
+        setDeviceDemo(false);
+      }
       const { data } = await sb.auth.getUser();
       return data.user ? toUser(data.user) : null;
     },
     async signUp(name, email, password) {
       const err = validateName(name) ?? validateEmail(email) ?? validatePassword(password);
       if (err) throw new AuthError(err);
-      const { data, error } = await sb.auth.signUp({ email, password, options: { data: { name } } });
+      const { data, error } = await sb.auth.signUp({ email, password, options: { data: { name }, emailRedirectTo: appLink('/app') } });
       fail(error);
       // With email confirmation on, Supabase creates the account but no session yet.
-      if (!data.user || !data.session) throw new AuthError(`Almost there! We sent a link to ${email}. Open it to confirm your account, then log in.`);
+      if (!data.user || !data.session) throw new AuthError(`Almost there! We sent a link to ${email}. Open it to confirm your account, then come back here and log in.`);
+      setDeviceDemo(false);
       return toUser(data.user);
     },
     async signIn(email, password) {
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error && /not confirmed/i.test(error.message)) throw new AuthError('Please confirm your email first: open the link we sent you, then log in.');
+      if (error && /invalid login credentials/i.test(error.message)) throw new AuthError('That email and password don’t match.');
       fail(error);
+      setDeviceDemo(false);
       return toUser(data.user!);
     },
     async signInWithGoogle() {
+      if ((await providers())?.google === false) throw new AuthError('Google sign-in isn’t switched on for LifeBox yet. Use your email instead.');
       if (Capacitor.isNativePlatform()) {
         // Google blocks sign-in inside embedded web views, so use the system browser.
         listenForNativeCallback();
@@ -72,19 +124,27 @@ export function createSupabaseAuth(): AuthService {
       fail(error);
     },
     async signInDemo() {
-      // Anonymous sign-in must be enabled in Supabase Auth settings.
+      // A server demo needs "Anonymous sign-ins" on in Supabase Auth. Without it the
+      // demo runs on this device only, with sample data and nothing sent to the server.
+      if ((await providers())?.anonymous_users === false) return deviceDemo();
       const { data, error } = await sb.auth.signInAnonymously({ options: { data: { name: 'Demo' } } });
-      if (error && /anonymous/i.test(error.message)) throw new AuthError('The demo isn’t switched on for this LifeBox yet. Sign up instead, it’s free.');
+      if (error && /anonymous/i.test(error.message)) return deviceDemo();
       fail(error);
+      setDeviceDemo(false);
       return toUser(data.user!);
     },
     async signOut() {
+      if (deviceDemoOn()) {
+        setDeviceDemo(false);
+        await device.signOut();
+        return;
+      }
       await sb.auth.signOut();
     },
     async requestPasswordReset(email) {
       const err = validateEmail(email);
       if (err) throw new AuthError(err);
-      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/reset-password` });
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: appLink('/reset-password') });
       fail(error);
       return {};
     },
@@ -99,12 +159,14 @@ export function createSupabaseAuth(): AuthService {
       const map: Record<string, AuthEvent> = { SIGNED_IN: 'signed_in', SIGNED_OUT: 'signed_out', USER_UPDATED: 'updated', PASSWORD_RECOVERY: 'password_recovery' };
       const { data } = sb.auth.onAuthStateChange((event, session) => {
         const e = map[event];
+        if (deviceDemoOn() && !session) return;
         // Supabase warns against awaiting its own calls inside this callback, so only report.
         if (e) listener(session?.user ? toUser(session.user) : null, e);
       });
       return () => data.subscription.unsubscribe();
     },
     async updateProfile(patch) {
+      if (deviceDemoOn()) return { ...(await device.updateProfile(patch)), onDevice: true };
       const { data, error } = await sb.auth.updateUser({ data: patch });
       fail(error);
       return toUser(data.user!);

@@ -6,6 +6,6 @@ import { createSupabaseRepository } from './supabaseRepository';
 
 export type { Repository } from './repository';
 
-export function createRepository(userId: ID): Repository {
-  return isSupabaseConfigured ? createSupabaseRepository(userId) : createLocalRepository(userId);
+export function createRepository(userId: ID, onDevice = false): Repository {
+  return isSupabaseConfigured && !onDevice ? createSupabaseRepository(userId) : createLocalRepository(userId);
 }

@@ -20,7 +20,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    const s = new LifeBoxStore(createRepository(user.id), user);
+    const s = new LifeBoxStore(createRepository(user.id, user.onDevice), user);
     s.init()
       .then(() => !cancelled && setStore(s))
       .catch((e: Error) => !cancelled && setError(e.message));

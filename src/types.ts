@@ -51,6 +51,8 @@ export interface User {
   name: string;
   createdAt: Timestamp;
   isDemo?: boolean;
+  /** A demo kept on this device because the server's guest sign-in is switched off. */
+  onDevice?: boolean;
 }
 
 export interface Memory {
