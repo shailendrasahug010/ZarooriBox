@@ -30,7 +30,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     priceLabel: '₹0 forever',
     limits: { memories: 200, recurring: 25, attachmentsPerMemory: 0 },
     features: [],
-    highlights: ['Basic memories', 'Basic reminders', 'Shopping list', 'Limited recurring items'],
+    highlights: ['Up to 200 reminders', 'Shopping list', 'Limited recurring items'],
   },
   pro: {
     id: 'pro',
@@ -48,7 +48,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       'multipleCalendars',
     ],
     highlights: [
-      'Unlimited memories',
+      'Unlimited reminders',
       'Advanced reminders',
       'AI natural-language entry',
       'Attachments',

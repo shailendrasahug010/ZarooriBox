@@ -296,7 +296,7 @@ export class ZarooriStore {
   private checkLimits(input: MemoryInput, editingId?: ID) {
     const plan = this.settings.plan;
     if (!editingId && this.data.memories.length >= limit(plan, 'memories')) {
-      throw new Error('You’ve reached the memory limit on the Free plan.');
+      throw new Error('You’ve reached the reminder limit on the Free plan.');
     }
     const wasRecurring = editingId ? this.data.recurrences.some((r) => r.memoryId === editingId) : false;
     if (input.repeat.frequency !== 'never' && !wasRecurring && this.data.recurrences.length >= limit(plan, 'recurring')) {
@@ -744,7 +744,7 @@ export class ZarooriStore {
       amount: p.amount,
       source: 'quick_add',
     });
-    return { kind: 'memory', message: `Remembered: ${m.title}`, id: m.id };
+    return { kind: 'memory', message: `Saved: ${m.title}`, id: m.id };
   }
 
   // ---------- Notifications & settings ----------

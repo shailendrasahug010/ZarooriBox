@@ -37,6 +37,7 @@ export function pathForDeepLink(url: string): string | null {
   const screen = u.host || u.pathname.replace(/^\/+/, '');
   if (screen === 'add') return `/app?${u.searchParams.get('voice') === '1' ? 'voice=1' : 'add=1'}`;
   if (screen === 'scan') return '/app/add?scan=1';
+  if (screen === 'home') return '/app';
   if (screen === 'shopping') return '/app/shopping';
   if (screen === 'share') return `/app/share?${u.searchParams.toString()}`;
   if (screen === 'act') return `/app/act?${u.searchParams.toString()}`;

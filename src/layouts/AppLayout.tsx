@@ -1,21 +1,14 @@
 import { useEffect, useState, type ComponentType } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  CalendarDays,
   CalendarClock,
   House,
   LayoutGrid,
   Plus,
-  Radar,
   Search,
   Settings,
   ShoppingCart,
   User,
-  Users,
-  Pill,
-  Star,
-  Ticket,
-  Wrench,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 import { NotificationBell } from '../components/NotificationBell';
@@ -28,43 +21,41 @@ import { NotificationPrompt } from '../components/NotificationPrompt';
 
 type Icon = ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
 
+// Five places only; everything else (medicines, bookings, people, calendar…) lives under Lists.
 const NAV: { to: string; label: MessageKey; icon: Icon; end?: boolean }[] = [
   { to: '/app', label: 'nav.home', icon: House, end: true },
-  { to: '/app/add', label: 'nav.add', icon: Plus },
   { to: '/app/upcoming', label: 'nav.upcoming', icon: CalendarClock },
-  { to: '/app/expiry', label: 'nav.expiry', icon: Radar },
   { to: '/app/shopping', label: 'nav.shopping', icon: ShoppingCart },
-  { to: '/app/people', label: 'nav.people', icon: Users },
-  { to: '/app/favourites', label: 'nav.favourites', icon: Star },
-  { to: '/app/medicines', label: 'nav.medicines', icon: Pill },
-  { to: '/app/bookings', label: 'nav.bookings', icon: Ticket },
-  { to: '/app/home-maintenance', label: 'nav.homeMaintenance', icon: Wrench },
-  { to: '/app/search', label: 'nav.search', icon: Search },
-  { to: '/app/calendar', label: 'nav.calendar', icon: CalendarDays },
+  { to: '/app/lists', label: 'nav.lists', icon: LayoutGrid },
   { to: '/app/settings', label: 'nav.settings', icon: Settings },
 ];
 
 const LIST_ROUTES = ['/app/lists', '/app/shopping', '/app/people', '/app/medicines', '/app/bookings', '/app/favourites', '/app/home-maintenance', '/app/expiry', '/app/calendar', '/app/search'];
 
-function SidebarLink({ to, label, icon: Icon, end, badge }: { to: string; label: string; icon: Icon; end?: boolean; badge?: number }) {
+function SidebarLink({ to, label, icon: Icon, end, badge, alsoActive }: { to: string; label: string; icon: Icon; end?: boolean; badge?: number; alsoActive?: boolean }) {
   return (
     <NavLink
       to={to}
       end={end}
-      className={({ isActive }) =>
+      className={({ isActive: navActive }) => {
+        const isActive = navActive || !!alsoActive;
+        return
         cx(
           'group flex min-h-11 items-center gap-3 rounded-xl px-3 text-[0.94rem] font-semibold transition',
           isActive ? 'bg-surface text-ink shadow-card' : 'text-ink-soft hover:bg-ink/[0.04] hover:text-ink',
-        )
-      }
+        );
+      }}
     >
-      {({ isActive }) => (
+      {({ isActive: navActive }) => {
+        const isActive = navActive || !!alsoActive;
+        return (
         <>
           <Icon className={cx('size-[1.15rem]', isActive ? 'text-brand-600' : 'text-muted group-hover:text-ink-soft')} aria-hidden />
           <span className="flex-1">{label}</span>
           {badge ? <span className="rounded-full bg-attn-bg px-2 py-0.5 text-xs font-bold text-attn">{badge}</span> : null}
         </>
-      )}
+        );
+      }}
     </NavLink>
   );
 }
@@ -116,7 +107,7 @@ export function AppLayout() {
 
   return (
     <div className="min-h-dvh">
-      <a href="#main" className="sr-only z-[70] rounded-lg bg-ink px-4 py-2 text-white focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
+      <a href="#main" className="sr-only z-[70] rounded-lg bg-[#1e1c19] px-4 py-2 text-white focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
         Skip to content
       </a>
 
@@ -127,7 +118,13 @@ export function AppLayout() {
         </Link>
         <nav className="flex-1 space-y-0.5 overflow-y-auto">
           {NAV.map((n) => (
-            <SidebarLink key={n.to} {...n} label={t(n.label)} badge={n.to === '/app/people' ? open : undefined} />
+            <SidebarLink
+              key={n.to}
+              {...n}
+              label={t(n.label)}
+              badge={n.to === '/app/lists' ? open : undefined}
+              alsoActive={n.to === '/app/lists' && LIST_ROUTES.some((r) => r !== '/app/shopping' && path.startsWith(r))}
+            />
           ))}
         </nav>
         <Link to="/app/settings" className="mt-4 flex items-center gap-3 rounded-2xl bg-surface p-3 shadow-card transition hover:shadow-lift">

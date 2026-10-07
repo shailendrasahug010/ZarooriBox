@@ -3,6 +3,8 @@ import { useAuth } from '../auth/AuthProvider';
 import { createRepository } from '../data';
 import { deviceChannel } from '../lib/notifications/channels';
 import { isNativeApp, syncNativeSchedule } from '../lib/notifications/native';
+import { syncWidget } from '../lib/widget';
+import { todayISO } from '../lib/dates';
 import { buildLendingViews, buildMemoryViews } from '../lib/selectors';
 import { getLanguage, setLanguage } from '../i18n';
 import type { UserData } from '../types';
@@ -52,6 +54,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
     check();
     const t = window.setInterval(check, CHECK_EVERY_MS);
     return () => window.clearInterval(t);
+  }, [store]);
+
+  // Android home-screen widget: keep its "Today" list current, including after midnight.
+  useEffect(() => {
+    if (!store) return;
+    const apply = () => syncWidget(store.getSnapshot(), todayISO());
+    apply();
+    const unsubscribe = store.subscribe(apply);
+    const onVisible = () => document.visibilityState === 'visible' && apply();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      unsubscribe();
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [store]);
 
   // The app speaks the language saved in the person's settings.

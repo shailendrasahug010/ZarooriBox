@@ -118,7 +118,7 @@ function useSwipe(enabled: boolean, onRight: () => void, onLeft: () => void) {
   return { dx, handlers };
 }
 
-export function MemoryRow({ m, showCheck = true, compact = false }: { m: MemoryView; showCheck?: boolean; compact?: boolean }) {
+export function MemoryRow({ m, showCheck = true, compact = false, showSnooze = false }: { m: MemoryView; showCheck?: boolean; compact?: boolean; showSnooze?: boolean }) {
   const { openMemory } = useUI();
   const { complete, snooze } = useMemoryActions();
   const store = useStore();
@@ -186,6 +186,17 @@ export function MemoryRow({ m, showCheck = true, compact = false }: { m: MemoryV
         </span>
         {m.dueDate && m.status === 'active' && <DuePill date={m.dueDate} urgency={m.urgency} />}
       </button>
+      {showSnooze && m.status === 'active' && (
+        <button
+          type="button"
+          onClick={() => snooze(m.id, 1)}
+          aria-label={t('act.snoozeLabel', { title: m.title })}
+          title={t('act.snoozeLabel', { title: m.title })}
+          className="grid size-11 shrink-0 place-items-center rounded-full text-soon transition hover:bg-soon-bg"
+        >
+          <AlarmClock className="size-5" aria-hidden="true" />
+        </button>
+      )}
       </div>
     </li>
   );

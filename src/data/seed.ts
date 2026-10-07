@@ -175,7 +175,7 @@ export function buildSeed(userId: ID): UserData {
         id: uid('ntf'),
         userId,
         title: 'Welcome to ZarooriBox 👋',
-        body: 'This demo is filled with sample memories. Try the Quick Add box: "Bike insurance expires on 17 November".',
+        body: 'This demo is filled with sample reminders. Try the Quick Add box: "Bike insurance expires on 17 November".',
         channel: 'in_app',
         createdAt: stamp(1),
         readAt: null,

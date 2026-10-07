@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Camera, CornerDownLeft, Mic, SlidersHorizontal, Sparkles, Square } from 'lucide-react';
 import { useT, type MessageKey } from '../i18n';
@@ -86,9 +86,11 @@ export interface QuickAddProps {
   onAdded?: () => void;
   /** Shows the camera button for scanning a document. */
   showScan?: boolean;
+  /** Shows a big hold-to-speak button that saves what was said straight away. */
+  bigMic?: boolean;
 }
 
-export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = false, initialText = '', onAdded, showScan = true }: QuickAddProps) {
+export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = false, initialText = '', onAdded, showScan = true, bigMic = false }: QuickAddProps) {
   const store = useStore();
   const t = useT();
   const toast = useToast();
@@ -137,12 +139,16 @@ export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = fals
     };
   }, [text, listening, store]);
 
-  const toggleVoice = async () => {
+  // Set when the big mic was released before the recognizer had started.
+  const stopWhenReady = useRef(false);
+
+  const toggleVoice = async (opts: { autoSave?: boolean } = {}) => {
     if (listening) {
       voiceRef.current?.stop();
       return;
     }
     const before = text;
+    stopWhenReady.current = false;
     setListening(true);
     const session = await voice.start(
       {
@@ -150,6 +156,11 @@ export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = fals
       onEnd: (heard) => {
         voiceRef.current = null;
         setListening(false);
+        if (opts.autoSave && heard.trim()) {
+          setText(heard);
+          void save(heard);
+          return;
+        }
         setText(heard || before);
         inputRef.current?.focus();
       },
@@ -162,14 +173,20 @@ export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = fals
       },
       voiceLangFor(store.settings, t.lang),
     );
-    if (session) voiceRef.current = session;
-    else setListening(false);
+    if (session) {
+      voiceRef.current = session;
+      if (stopWhenReady.current) session.stop();
+    } else setListening(false);
   };
 
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
-    const value = text.trim();
     if (listening) voiceRef.current?.stop();
+    await save(text);
+  };
+
+  const save = async (raw: string) => {
+    const value = raw.trim();
     if (!value || busy) {
       inputRef.current?.focus();
       return;
@@ -180,7 +197,7 @@ export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = fals
     }
     setBusy(true);
     try {
-      const parsed = aiMatches ? aiPreview!.parsed : await quickAddParser.parse(value, { today: todayISO(), currency: store.settings.currency });
+      const parsed = aiPreview?.text === value ? aiPreview.parsed : await quickAddParser.parse(value, { today: todayISO(), currency: store.settings.currency });
       const res = await store.applyQuickAdd(parsed);
       setText('');
       setAiPreview(null);
@@ -257,6 +274,30 @@ export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = fals
     navigate('/app/add', { state: { scanFile: file } });
   };
 
+  // Big mic: hold it while speaking and let go to save, or tap once to start and
+  // it saves when you stop talking. Tapping again while it listens stops early.
+  const pressedAt = useRef(0);
+  const micDown = (e: PointerEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    // Keep getting the release even if the finger slides off the button.
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    if (listening) {
+      voiceRef.current?.stop();
+      pressedAt.current = 0;
+      return;
+    }
+    pressedAt.current = Date.now();
+    void toggleVoice({ autoSave: true });
+  };
+  const micUp = () => {
+    if (!pressedAt.current) return;
+    const held = Date.now() - pressedAt.current > 600;
+    pressedAt.current = 0;
+    if (!held) return;
+    if (voiceRef.current) voiceRef.current.stop();
+    else stopWhenReady.current = true;
+  };
+
   const hero = variant === 'hero';
   return (
     <form onSubmit={submit} className={cx('card relative p-3 sm:p-4', flash && 'ring-2 ring-brand-300 transition-shadow')} aria-label="Quick add">
@@ -286,7 +327,7 @@ export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = fals
         {voice.isSupported() && (
           <button
             type="button"
-            onClick={toggleVoice}
+            onClick={() => toggleVoice()}
             aria-pressed={listening}
             aria-label={listening ? t('qa.stopVoice') : t('qa.voice')}
             title={listening ? t('qa.stopVoice') : t('qa.voice')}
@@ -335,6 +376,33 @@ export function QuickAdd({ variant = 'hero', autoFocus = false, autoVoice = fals
       <p id={hintId} className="sr-only">
         Type or say a sentence like “Car insurance expires 12 February 2027”. ZarooriBox works out the date, category and reminder. Press Enter to save.
       </p>
+      {bigMic && voice.isSupported() && (!text || listening) && (
+        <div className="mt-3 flex flex-col items-center gap-2 pb-1">
+          <button
+            type="button"
+            onPointerDown={micDown}
+            onPointerUp={micUp}
+            onPointerCancel={micUp}
+            onContextMenu={(e) => e.preventDefault()}
+            onClick={(e) => {
+              // Keyboard (Enter / Space): start or stop; pointer presses are handled above.
+              if (e.detail === 0) void toggleVoice({ autoSave: true });
+            }}
+            aria-pressed={listening}
+            aria-label={listening ? t('qa.bigMicStop') : t('qa.bigMic')}
+            className={cx(
+              'relative grid size-20 touch-none select-none place-items-center rounded-full text-white shadow-lg transition active:scale-95',
+              listening ? 'bg-attn' : 'bg-brand-600 hover:bg-brand-700',
+            )}
+          >
+            {listening && <span className="absolute inset-0 animate-ping rounded-full bg-attn/40" aria-hidden="true" />}
+            <Mic className="relative size-9" aria-hidden="true" />
+          </button>
+          <span className="text-sm font-medium text-ink-soft" aria-live="polite">
+            {listening ? t('qa.bigMicListening') : t('qa.bigMicHint')}
+          </span>
+        </div>
+      )}
       {preview && (
         <>
           <Preview p={preview} ai={aiMatches} />

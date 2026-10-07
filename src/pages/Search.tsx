@@ -107,8 +107,8 @@ export default function Search() {
             {results.total} result{results.total === 1 ? '' : 's'}
           </p>
           {results.memories.length > 0 && (
-            <section className="card p-4" aria-label="Memories">
-              <h2 className="section-title mb-1">Memories</h2>
+            <section className="card p-4" aria-label="Reminders">
+              <h2 className="section-title mb-1">Reminders</h2>
               <ul className="-mx-2">
                 {results.memories.map((m) => (
                   <MemoryRow key={m.id} m={m} showCheck={false} />
