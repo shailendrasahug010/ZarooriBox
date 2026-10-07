@@ -174,6 +174,14 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
 
       <main className="relative flex flex-col px-5 pb-8 pt-7 sm:px-10 lg:py-10">
         <div className="m-auto w-full max-w-sm">
+          <img
+            src="/logo.png"
+            alt="LifeBox: Everything you don’t want to forget."
+            width={567}
+            height={600}
+            className="mx-auto mb-6 h-auto w-44 animate-pop drop-shadow-[0_12px_24px_rgb(29_111_242/0.18)] sm:w-48"
+            draggable={false}
+          />
           <div className="animate-fade-up" style={{ animationDelay: '120ms' }}>
             <h1 className="text-[1.75rem] font-extrabold tracking-tight">{title}</h1>
             {subtitle && <p className="mt-1.5 text-muted">{subtitle}</p>}
