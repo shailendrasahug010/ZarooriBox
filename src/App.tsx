@@ -26,6 +26,7 @@ const Calendar = lazy(() => import('./pages/Calendar'));
 const Lists = lazy(() => import('./pages/Lists'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Welcome = lazy(() => import('./pages/Welcome'));
+const Privacy = lazy(() => import('./pages/Privacy'));
 const Share = lazy(() => import('./pages/Share'));
 const InAppAct = lazy(() => import('./pages/Act').then((m) => ({ default: m.InAppAct })));
 const PublicAct = lazy(() => import('./pages/Act').then((m) => ({ default: m.PublicAct })));
@@ -86,6 +87,7 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             {/* Done / Snooze links in reminder emails; no sign-in needed. */}
             <Route path="/act" element={lazyPage(<PublicAct />)} />
+            <Route path="/privacy" element={lazyPage(<Privacy />)} />
             <Route
               path="/app"
               element={

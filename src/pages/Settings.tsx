@@ -43,7 +43,7 @@ const CHANNEL_NAMES: Record<string, string> = { email: 'Email', whatsapp: 'Whats
 
 
 export default function Settings() {
-  const { user, signOut, updateProfile } = useAuth();
+  const { user, signOut, updateProfile, deleteAccount } = useAuth();
   const store = useStore();
   const data = useData();
   const toast = useToast();
@@ -53,7 +53,7 @@ export default function Settings() {
   const [name, setName] = useState(user?.name ?? '');
   const [nameError, setNameError] = useState('');
   const [browserStatus, setBrowserStatus] = useState<ChannelStatus>(deviceChannel.status());
-  const [confirm, setConfirm] = useState<'reset' | 'delete' | null>(null);
+  const [confirm, setConfirm] = useState<'reset' | 'delete' | 'account' | null>(null);
   const [fileBackup, setFileBackup] = useState<Backup | null>(null);
   const [phone, setPhone] = useState(settings.phone ?? '');
   const [phoneError, setPhoneError] = useState('');
@@ -396,6 +396,11 @@ export default function Settings() {
           <button type="button" className="btn btn-danger btn-sm" onClick={() => setConfirm('delete')}>
             <Trash2 className="size-4" aria-hidden="true" /> Delete all my data
           </button>
+          {!user?.isDemo && (
+            <button type="button" className="btn btn-danger btn-sm" onClick={() => setConfirm('account')}>
+              <Trash2 className="size-4" aria-hidden="true" /> Delete my account
+            </button>
+          )}
         </div>
       </Section>
 
@@ -450,6 +455,24 @@ export default function Settings() {
           setConfirm(null);
           await store.deleteAllData();
           toast.success('Your ZarooriBox is now empty');
+        }}
+      />
+      <ConfirmDialog
+        open={confirm === 'account'}
+        title="Delete your account?"
+        body="Your account, sign-in and everything in it (items, lists, files and settings) will be permanently deleted. Copies you made yourself, like a Google Drive backup or an exported file, stay with you. This can’t be undone."
+        confirmLabel="Delete my account"
+        danger
+        onCancel={() => setConfirm(null)}
+        onConfirm={async () => {
+          setConfirm(null);
+          try {
+            await deleteAccount();
+            toast.success('Your account has been deleted');
+            navigate('/');
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Could not delete your account.');
+          }
         }}
       />
     </div>

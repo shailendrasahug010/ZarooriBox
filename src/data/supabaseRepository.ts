@@ -1,5 +1,5 @@
 import type { Attachment, CollectionName, CollectionRecord, Family, ID, UserData, UserSettings } from '../types';
-import { COLLECTIONS, EMPTY_DATA, type FamilyService, type Repository } from './repository';
+import { COLLECTIONS, EMPTY_DATA, type DoseLogService, type FamilyService, type Repository } from './repository';
 import { getSupabase } from './supabase';
 
 // Supabase/PostgreSQL adapter. Tables and row-level security live in
@@ -52,6 +52,27 @@ function familyService(sb: ReturnType<typeof getSupabase>, userId: ID): FamilySe
   };
 }
 
+function doseLog(sb: ReturnType<typeof getSupabase>, userId: ID): DoseLogService {
+  const split = (key: string) => {
+    const at = key.lastIndexOf('@');
+    return { memory_id: key.slice(0, at), dose_time: key.slice(at + 1) };
+  };
+  return {
+    async taken(day) {
+      const { data, error } = await sb.from('dose_logs').select('memory_id, dose_time').eq('user_id', userId).eq('day', day);
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((r) => `${r.memory_id}@${r.dose_time}`);
+    },
+    async set(day, key, taken) {
+      const row = { user_id: userId, day, ...split(key) };
+      const { error } = taken
+        ? await sb.from('dose_logs').upsert(row, { onConflict: 'user_id,day,memory_id,dose_time', ignoreDuplicates: true })
+        : await sb.from('dose_logs').delete().match(row);
+      if (error) throw new Error(error.message);
+    },
+  };
+}
+
 const toSnake = (k: string) => k.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
 const toCamel = (k: string) => k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
 
@@ -74,6 +95,7 @@ export function createSupabaseRepository(userId: ID): Repository {
     mode: 'supabase',
     userId,
     family,
+    doses: doseLog(sb, userId),
     async load() {
       const data: UserData = structuredClone(EMPTY_DATA);
       await Promise.all(

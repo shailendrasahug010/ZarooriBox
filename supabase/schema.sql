@@ -430,3 +430,22 @@ create table if not exists public.drive_backups (
 );
 alter table public.drive_backups enable row level security;
 revoke all on public.drive_backups from anon, authenticated;
+
+-- Medicine doses marked "Taken", one row per dose per day, so ticks follow the
+-- account to every device. Each person sees and changes only their own ticks.
+create table if not exists public.dose_logs (
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  memory_id text not null references public.memories(id) on delete cascade,
+  day date not null,
+  dose_time text not null check (dose_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'),
+  taken_at timestamptz not null default now(),
+  primary key (user_id, day, memory_id, dose_time)
+);
+create index if not exists dose_logs_memory on public.dose_logs (memory_id);
+alter table public.dose_logs enable row level security;
+alter table public.dose_logs force row level security;
+drop policy if exists "owner only" on public.dose_logs;
+create policy "owner only" on public.dose_logs for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+revoke all on public.dose_logs from anon;
+grant select, insert, delete on public.dose_logs to authenticated;

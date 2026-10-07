@@ -15,6 +15,7 @@ interface AuthContextValue {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (patch: { name?: string }) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -57,6 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       },
       updateProfile: async (patch) => setUser(await service.updateProfile(patch)),
+      deleteAccount: async () => {
+        await service.deleteAccount();
+        setUser(null);
+      },
     }),
     [user, loading, service, wrap],
   );

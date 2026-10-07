@@ -1,0 +1,74 @@
+name: Android release
+
+# Builds the signed Play Store bundle (.aab) for Google Play. Run it from the
+# Actions tab. It needs these repository secrets (see docs/store-setup.md):
+#   ZAROORI_UPLOAD_KEYSTORE_BASE64  the upload key file (.jks), base64 encoded
+#   ZAROORI_UPLOAD_STORE_PASSWORD   its password
+#   ZAROORI_UPLOAD_KEY_ALIAS        the key's alias (for example "upload")
+#   ZAROORI_UPLOAD_KEY_PASSWORD     the key's password (often the same as above)
+# Optional: PLAY_SERVICE_ACCOUNT_JSON sends the bundle straight to the Play
+# Console's internal testing track. Without it, download the artifact
+# zaroori-play-release and upload the .aab in the Play Console yourself.
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: Play track when PLAY_SERVICE_ACCOUNT_JSON is set
+        type: choice
+        options: [internal, alpha, beta, production]
+        default: internal
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEY: ${{ secrets.ZAROORI_UPLOAD_KEYSTORE_BASE64 != '' }}
+      HAS_PLAY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+    steps:
+      - name: Check the upload key is set up
+        if: env.HAS_KEY != 'true'
+        run: |
+          echo "::error::Add the ZAROORI_UPLOAD_* secrets first (docs/store-setup.md, Google Play step 2)."
+          exit 1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync android
+      - name: Write the upload key
+        run: echo "${{ secrets.ZAROORI_UPLOAD_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/upload.jks"
+      - name: Build signed bundle and APK
+        working-directory: android
+        env:
+          ZAROORI_UPLOAD_KEYSTORE: ${{ runner.temp }}/upload.jks
+          ZAROORI_UPLOAD_STORE_PASSWORD: ${{ secrets.ZAROORI_UPLOAD_STORE_PASSWORD }}
+          ZAROORI_UPLOAD_KEY_ALIAS: ${{ secrets.ZAROORI_UPLOAD_KEY_ALIAS }}
+          ZAROORI_UPLOAD_KEY_PASSWORD: ${{ secrets.ZAROORI_UPLOAD_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease assembleRelease --no-daemon
+      - name: Remove the upload key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zaroori-play-release
+          path: |
+            android/app/build/outputs/bundle/release/app-release.aab
+            android/app/build/outputs/apk/release/app-release.apk
+      - name: Send to Google Play
+        if: env.HAS_PLAY == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: app.zaroori
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: ${{ inputs.track }}
+          # A draft waits in the Play Console until you press "Review release" and roll it out.
+          status: draft

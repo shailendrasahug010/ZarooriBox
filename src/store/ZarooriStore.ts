@@ -5,6 +5,7 @@ import type {
   CollectionName,
   CollectionRecord,
   ID,
+  ISODate,
   Lending,
   Memory,
   MemoryStatus,
@@ -23,6 +24,7 @@ import { addDays, diffDays, formatDate, nextOccurrenceAfter, todayISO } from '..
 import { capitalizeName, formatMoney, nowStamp, uid } from '../lib/format';
 import { can, limit } from '../lib/plans';
 import { backupCount, prepareRestore, restoredSettings, type Backup } from '../lib/backup';
+import { clearTaken, readTaken, writeTaken } from '../lib/medicines';
 import { t } from '../i18n';
 import type { ParsedQuickAdd } from '../lib/parser';
 import { collectDueReminders, collectTimedAlerts, toNotification, type DueReminder } from '../lib/notifications/scheduler';
@@ -503,6 +505,33 @@ export class ZarooriStore {
       (d) => ({ ...d, memories: d.memories.map((m) => (m.id === id ? { ...m, ...patch } : m)) }),
       () => this.repo.update('memories', id, patch),
     );
+  }
+
+  // ---------- Medicine doses ----------
+
+  /**
+   * Keys of the doses taken on a day. Cloud accounts keep them with the account,
+   * so every phone shows the same ticks; ticks made on this device before that
+   * are carried up once.
+   */
+  async takenDoses(day: ISODate): Promise<Set<string>> {
+    const local = readTaken(this.uid, day);
+    const log = this.repo.doses;
+    if (!log) return local;
+    const taken = new Set(await log.taken(day));
+    const missing = [...local].filter((k) => !taken.has(k));
+    const carried = await Promise.all(missing.map((k) => log.set(day, k, true).then(() => k, () => null)));
+    carried.forEach((k) => k && taken.add(k));
+    if (local.size) clearTaken(this.uid, day);
+    return taken;
+  }
+
+  async setDoseTaken(day: ISODate, key: string, taken: boolean) {
+    if (this.repo.doses) return this.repo.doses.set(day, key, taken);
+    const set = readTaken(this.uid, day);
+    if (taken) set.add(key);
+    else set.delete(key);
+    writeTaken(this.uid, day, set);
   }
 
   async deleteMemory(id: ID): Promise<MemorySnapshot | null> {

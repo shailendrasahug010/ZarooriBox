@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { memoryStore } from '../data/localRepository';
+import { dataKey, memoryStore } from '../data/localRepository';
 import { createLocalAuth } from './localAuth';
 
 describe('local auth', () => {
@@ -12,6 +12,19 @@ describe('local auth', () => {
     expect(await auth.getCurrentUser()).toBeNull();
     await expect(auth.signIn('meera@example.com', 'wrongpass1')).rejects.toThrow(/don’t match/);
     expect((await auth.signIn('meera@example.com', 'secret123')).id).toBe(u.id);
+  });
+
+  it('deletes an account, its data and its sign-in', async () => {
+    const kv = memoryStore();
+    const auth = createLocalAuth(kv);
+    const u = await auth.signUp('Meera', 'meera@example.com', 'secret123');
+    kv.setItem(dataKey(u.id), '{}');
+    await auth.deleteAccount();
+    expect(await auth.getCurrentUser()).toBeNull();
+    expect(kv.getItem(dataKey(u.id))).toBeNull();
+    await expect(auth.signIn('meera@example.com', 'secret123')).rejects.toThrow();
+    // The email is free again.
+    expect((await auth.signUp('Meera', 'meera@example.com', 'secret123')).id).not.toBe(u.id);
   });
 
   it('rejects weak passwords and duplicates', async () => {

@@ -6,3 +6,10 @@ e2e/screenshots
 supabase/functions/node_modules
 supabase/functions/deno.lock
 *.tsbuildinfo
+
+# App signing keys stay out of the repo (the debug test key is the only exception).
+*.jks
+upload-keystore*
+*.p12
+*.mobileprovision
+*.p8

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLocalRepository, dataKey, memoryStore, type KeyValueStore } from '../data/localRepository';
 import { AccessDeniedError } from '../data/repository';
 import { addDays, REPEAT_PRESETS, setNow } from '../lib/dates';
@@ -244,5 +244,46 @@ describe('quick actions', () => {
   it('keeps family sharing to signed-in cloud accounts', async () => {
     expect(store.canUseFamily).toBe(false);
     await expect(store.joinFamily('AB12CD34')).rejects.toThrow();
+  });
+});
+
+describe('medicine dose ticks', () => {
+  const day = '2026-10-06';
+
+  beforeEach(() => vi.stubGlobal('localStorage', memoryStore()));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('keeps ticks on this device without a cloud account', async () => {
+    await store.setDoseTaken(day, 'm1@08:00', true);
+    await store.setDoseTaken(day, 'm1@20:00', true);
+    await store.setDoseTaken(day, 'm1@20:00', false);
+    expect([...(await store.takenDoses(day))]).toEqual(['m1@08:00']);
+    expect([...(await store.takenDoses('2026-10-07'))]).toEqual([]);
+  });
+
+  it('saves ticks to the account and carries up ticks made on this device', async () => {
+    const saved = new Map<string, Set<string>>();
+    const doses = {
+      taken: async (d: string) => [...(saved.get(d) ?? [])],
+      set: async (d: string, k: string, on: boolean) => {
+        if (k.startsWith('gone')) throw new Error('memory deleted');
+        const s = saved.get(d) ?? new Set<string>();
+        if (on) s.add(k);
+        else s.delete(k);
+        saved.set(d, s);
+      },
+    };
+    // A tick from before the account synced, plus one for a medicine since deleted.
+    await store.setDoseTaken(day, 'm1@08:00', true);
+    await store.setDoseTaken(day, 'gone@09:00', true);
+    const cloud = new ZarooriStore({ ...createLocalRepository(alice.id, kv), doses }, alice);
+    await cloud.init();
+
+    expect([...(await cloud.takenDoses(day))]).toEqual(['m1@08:00']);
+    await cloud.setDoseTaken(day, 'm1@20:00', true);
+    expect([...saved.get(day)!].sort()).toEqual(['m1@08:00', 'm1@20:00']);
+    // The local list was handed over, so a second phone sees the same ticks from the account.
+    expect(localStorage.getItem(`zaroori:v1:doses:${alice.id}:${day}`)).toBeNull();
+    expect([...(await cloud.takenDoses(day))].sort()).toEqual(['m1@08:00', 'm1@20:00']);
   });
 });

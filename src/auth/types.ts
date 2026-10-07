@@ -19,6 +19,8 @@ export interface AuthService {
   /** token is required in local mode; Supabase uses the recovery session from the email link. */
   resetPassword(token: string | null, newPassword: string): Promise<void>;
   updateProfile(patch: { name?: string }): Promise<User>;
+  /** Permanently deletes the signed-in account and everything in it, then signs out. */
+  deleteAccount(): Promise<void>;
   /**
    * Sign-in changes that happen outside the app's own calls: returning from Google,
    * opening a password-reset link, a session expiring, signing out in another tab.

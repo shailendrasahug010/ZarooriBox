@@ -296,7 +296,12 @@ export default function Landing() {
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-8 text-sm text-muted sm:flex-row sm:px-6">
           <Logo />
-          <p>Everything important, in one place. © {new Date().getFullYear()} ZarooriBox</p>
+          <p>
+            Everything important, in one place. © {new Date().getFullYear()} ZarooriBox ·{' '}
+            <Link to="/privacy" className="underline hover:text-ink">
+              Privacy policy
+            </Link>
+          </p>
         </div>
       </footer>
     </div>

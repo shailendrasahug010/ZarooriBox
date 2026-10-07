@@ -24,6 +24,12 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>ZarooriBox uses the microphone so you can add things by speaking.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>ZarooriBox uses the camera so you can scan a bill, ticket or document.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ZarooriBox lets you attach a photo of a bill, ticket or document.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>ZarooriBox turns what you say into reminders and list items.</string>
 	<key>CFBundleURLTypes</key>
