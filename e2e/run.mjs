@@ -13,7 +13,7 @@ async function step(name, fn) {
     await fn();
     results.push(['✓', name]);
   } catch (e) {
-    results.push(['✗', name, e.message.split('\n')[0]]);
+    results.push(['✗', name, process.env.E2E_VERBOSE ? e.message : e.message.split('\n')[0]]);
   }
 }
 const expect = (cond, msg) => {
@@ -535,6 +535,25 @@ await step('Mobile: demo login, bottom nav, no horizontal scroll', async () => {
   await p.waitForURL('**/app/shopping');
   const box = await p.getByRole('checkbox').first().boundingBox();
   expect(box && box.height >= 44, 'touch target ≥ 44px');
+});
+await step('Favourites: star an item, it shows under Favourites, unstar removes it', async () => {
+  const p = m.page;
+  await p.goto(`${BASE}/app/favourites`);
+  await p.getByText('Passport').first().waitFor();
+  await p.goto(`${BASE}/app/bookings`);
+  await p.getByRole('button', { name: /Movie Tickets.*·/ }).first().click();
+  await p.getByRole('button', { name: 'Add to favourites' }).click();
+  await p.getByText('Added to favourites').waitFor();
+  await p.keyboard.press('Escape');
+  await p.goto(`${BASE}/app/lists`);
+  await p.getByRole('link', { name: /Favourites/ }).getByText('3 starred').waitFor();
+  await p.getByRole('link', { name: /Favourites/ }).click();
+  await p.getByRole('button', { name: /Movie Tickets.*·/ }).first().click();
+  await p.getByRole('button', { name: 'Remove from favourites' }).click();
+  await p.keyboard.press('Escape');
+  await p.reload();
+  await p.getByText('Passport').first().waitFor();
+  expect((await p.getByText('Movie Tickets').count()) === 0, 'unstarred item still listed');
 });
 await m.ctx.close();
 await browser.close();

@@ -13,6 +13,7 @@ import {
   User,
   Users,
   Pill,
+  Star,
   Ticket,
   Wrench,
 } from 'lucide-react';
@@ -33,6 +34,7 @@ const NAV: { to: string; label: MessageKey; icon: Icon; end?: boolean }[] = [
   { to: '/app/expiry', label: 'nav.expiry', icon: Radar },
   { to: '/app/shopping', label: 'nav.shopping', icon: ShoppingCart },
   { to: '/app/people', label: 'nav.people', icon: Users },
+  { to: '/app/favourites', label: 'nav.favourites', icon: Star },
   { to: '/app/medicines', label: 'nav.medicines', icon: Pill },
   { to: '/app/bookings', label: 'nav.bookings', icon: Ticket },
   { to: '/app/home-maintenance', label: 'nav.homeMaintenance', icon: Wrench },
@@ -41,7 +43,7 @@ const NAV: { to: string; label: MessageKey; icon: Icon; end?: boolean }[] = [
   { to: '/app/settings', label: 'nav.settings', icon: Settings },
 ];
 
-const LIST_ROUTES = ['/app/lists', '/app/shopping', '/app/people', '/app/medicines', '/app/bookings', '/app/home-maintenance', '/app/expiry', '/app/calendar', '/app/search'];
+const LIST_ROUTES = ['/app/lists', '/app/shopping', '/app/people', '/app/medicines', '/app/bookings', '/app/favourites', '/app/home-maintenance', '/app/expiry', '/app/calendar', '/app/search'];
 
 function SidebarLink({ to, label, icon: Icon, end, badge }: { to: string; label: string; icon: Icon; end?: boolean; badge?: number }) {
   return (
