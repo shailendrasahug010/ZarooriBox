@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Crown, Download, LogOut, RotateCcw, ShieldCheck, Trash2 } from 'lucide-react';
+import { Crown, Download, LogOut, RotateCcw, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 import { ConfirmDialog } from '../components/Modal';
 import { useToast } from '../components/Toast';
@@ -11,6 +11,9 @@ import { normalizePhone } from '../lib/format';
 import { EARLY_ACCESS, PLANS } from '../lib/plans';
 import { useData, useStore } from '../store/DataProvider';
 import { FamilySettings } from '../components/FamilySettings';
+import { DriveBackup } from '../components/DriveBackup';
+import { backupCount, parseBackup, type Backup } from '../lib/backup';
+import { formatDate } from '../lib/dates';
 import { APP_LANGUAGES, VOICE_LANGUAGES, setLanguage, useT } from '../i18n';
 import type { NotificationPrefs } from '../types';
 
@@ -50,6 +53,7 @@ export default function Settings() {
   const [nameError, setNameError] = useState('');
   const [browserStatus, setBrowserStatus] = useState<ChannelStatus>(deviceChannel.status());
   const [confirm, setConfirm] = useState<'reset' | 'delete' | null>(null);
+  const [fileBackup, setFileBackup] = useState<Backup | null>(null);
   const [phone, setPhone] = useState(settings.phone ?? '');
   const [phoneError, setPhoneError] = useState('');
   const [testing, setTesting] = useState(false);
@@ -150,6 +154,17 @@ export default function Settings() {
     a.download = `zaroori-export-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+  };
+
+  const pickBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    try {
+      setFileBackup(parseBackup(await f.text()));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not read that file.');
+    }
   };
 
   return (
@@ -331,6 +346,10 @@ export default function Settings() {
         {EARLY_ACCESS && <p className="mt-3 rounded-xl bg-soon-bg px-3 py-2 text-sm text-soon">🎁 Early access: every Pro feature that exists today is unlocked for free.</p>}
       </Section>
 
+      <Section id="backup" title="Google Drive backup" description="A daily copy you can restore on any phone.">
+        <DriveBackup />
+      </Section>
+
       <Section title="Privacy & data">
         <p className="flex gap-2 text-sm text-ink-soft">
           <ShieldCheck className="size-5 shrink-0 text-brand-600" aria-hidden="true" />
@@ -342,6 +361,10 @@ export default function Settings() {
           <button type="button" className="btn btn-secondary btn-sm" onClick={exportData}>
             <Download className="size-4" aria-hidden="true" /> Export my data
           </button>
+          <label className="btn btn-secondary btn-sm cursor-pointer focus-within:shadow-focus">
+            <Upload className="size-4" aria-hidden="true" /> Restore from a file
+            <input type="file" accept="application/json,.json" className="sr-only" onChange={pickBackup} />
+          </label>
           {user?.isDemo && (
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => setConfirm('reset')}>
               <RotateCcw className="size-4" aria-hidden="true" /> Reset demo data
@@ -364,6 +387,23 @@ export default function Settings() {
         <LogOut className="size-4" aria-hidden="true" /> Log out
       </button>
 
+      <ConfirmDialog
+        open={!!fileBackup}
+        title="Restore from this file?"
+        body={`Your items will be replaced by the ${fileBackup ? backupCount(fileBackup) : 0} items in this backup${fileBackup?.exportedAt ? ` from ${formatDate(fileBackup.exportedAt.slice(0, 10))}` : ''}.`}
+        confirmLabel="Restore"
+        onCancel={() => setFileBackup(null)}
+        onConfirm={async () => {
+          const b = fileBackup!;
+          setFileBackup(null);
+          try {
+            const n = await store.restoreBackup(b);
+            toast.success(`Restored ${n} item${n === 1 ? '' : 's'}`);
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Could not restore.');
+          }
+        }}
+      />
       <ConfirmDialog
         open={confirm === 'reset'}
         title="Reset demo data?"

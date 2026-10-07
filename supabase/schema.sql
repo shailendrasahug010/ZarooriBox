@@ -411,3 +411,21 @@ alter policy "own attachment files" on storage.objects
     (storage.foldername(name))[1] = (select auth.uid())::text
     or exists (select 1 from public.attachments a where a.storage_path = objects.name)))
   with check (bucket_id = 'attachments' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- Google Drive backup (supabase/functions/drive-backup). One row per person who
+-- connected Drive. The refresh token is encrypted by the function. Row level security
+-- is on with no policies, so only the function (service role) can read or write it.
+create table if not exists public.drive_backups (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  refresh_token text not null,
+  google_email text,
+  folder_id text,
+  file_id text,
+  last_backup_at timestamptz,
+  last_attempt_at timestamptz,
+  last_count integer,
+  last_error text,
+  created_at timestamptz not null default now()
+);
+alter table public.drive_backups enable row level security;
+revoke all on public.drive_backups from anon, authenticated;

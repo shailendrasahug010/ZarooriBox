@@ -37,3 +37,23 @@ select cron.schedule(
   );
   $$
 );
+
+-- Google Drive backups, once a day at 03:00 India time (21:30 UTC).
+select cron.unschedule('zaroori-drive-backup')
+where exists (select 1 from cron.job where jobname = 'zaroori-drive-backup');
+
+select cron.schedule(
+  'zaroori-drive-backup',
+  '30 21 * * *',
+  $$
+  select net.http_post(
+    url := 'https://<project-ref>.supabase.co/functions/v1/drive-backup',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'zaroori_cron_secret')
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 300000
+  );
+  $$
+);

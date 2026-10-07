@@ -334,6 +334,28 @@ await step('Second user search stays empty of the first user’s data', async ()
   await page.goto(`${BASE}/app/search?q=insurance`);
   await page.getByText('Nothing found for “insurance”').waitFor();
 });
+await step('Backup: export from one account, restore from the file in another', async () => {
+  const demo = await newPage();
+  await demo.page.goto(`${BASE}/login`);
+  await demo.page.getByRole('button', { name: /Try the demo/ }).click();
+  await demo.page.waitForURL(/\/app/);
+  await demo.page.goto(`${BASE}/app/settings`);
+  const [download] = await Promise.all([demo.page.waitForEvent('download'), demo.page.getByRole('button', { name: 'Export my data' }).click()]);
+  const { readFile } = await import('node:fs/promises');
+  const buffer = await readFile(await download.path());
+  await demo.ctx.close();
+  await page.goto(`${BASE}/app/settings`);
+  await page.getByText('Google Drive backup needs a ZarooriBox cloud account.').waitFor();
+  await page.setInputFiles('input[type=file][accept*="json"]', { name: 'backup.json', mimeType: 'application/json', buffer });
+  await page.getByRole('heading', { name: 'Restore from this file?' }).waitFor();
+  await page.getByRole('button', { name: 'Restore', exact: true }).click();
+  await page.getByText(/Restored \d+ items/).waitFor();
+  await page.goto(`${BASE}/app/search?q=vitamin`);
+  await page.getByText('Vitamin D').first().waitFor();
+  await page.goto(`${BASE}/app/search?q=rent`);
+  await page.getByText(/Nothing found/).waitFor();
+});
+
 await ctx.close();
 
 
