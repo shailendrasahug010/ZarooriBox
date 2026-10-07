@@ -1,14 +1,19 @@
 name: iOS app
 
-# Checks that the iPhone app compiles (simulator build, no signing).
-# Run it from the Actions tab. To install on a real iPhone, open ios/App in Xcode
-# on a Mac and run it with your Apple developer account (see README).
+# Builds the iPhone app on a Mac runner. Run it from the Actions tab.
+# - Checks the app compiles for the simulator.
+# - Produces an unsigned .ipa (artifact zaroori-ios-unsigned). Apple only lets an
+#   iPhone run signed apps, so install it with Sideloadly or AltStore, which sign it
+#   with your own Apple ID (see README). For TestFlight or the App Store, open
+#   ios/App in Xcode with a paid Apple developer account.
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
-  simulator-build:
+  ipa:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -21,4 +26,22 @@ jobs:
       - run: npx cap sync ios
       - name: Build for the iOS simulator
         working-directory: ios/App
-        run: xcodebuild -project App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build | tail -40; exit ${PIPESTATUS[0]}
+        run: xcodebuild -project App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build | tail -20; exit ${PIPESTATUS[0]}
+      - name: Build for iPhone (unsigned)
+        working-directory: ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} build | tail -20; exit ${PIPESTATUS[0]}
+      - name: Package .ipa
+        working-directory: ios/App
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qry ZarooriBox-unsigned.ipa Payload
+          ls -la ZarooriBox-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zaroori-ios-unsigned
+          path: ios/App/ZarooriBox-unsigned.ipa
