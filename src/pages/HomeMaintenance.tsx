@@ -44,7 +44,7 @@ export default function HomeMaintenance() {
               </ul>
             </section>
           ))}
-          <p className="px-1 text-sm text-muted">Tip: when you tick off a repeating task, Zaroori moves it to the next date automatically.</p>
+          <p className="px-1 text-sm text-muted">Tip: when you tick off a repeating task, ZarooriBox moves it to the next date automatically.</p>
         </div>
       )}
     </div>

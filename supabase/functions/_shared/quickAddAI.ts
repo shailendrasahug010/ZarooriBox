@@ -1,6 +1,6 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@^0.131';
 
-// Turns a one-line Quick Add sentence into Zaroori's structured shape using Claude.
+// Turns a one-line Quick Add sentence into ZarooriBox's structured shape using Claude.
 // The browser never sees the API key: it calls the parse-quick-add function, which
 // calls this. The client still validates every field and falls back to its rule parser.
 
@@ -56,7 +56,7 @@ export const PARSED_SCHEMA = {
 } as const;
 
 // Kept byte-stable so it can be cached; the per-request date goes in the user turn.
-const SYSTEM = `You turn one short sentence a person typed into Zaroori (a personal reminder app, popular in India) into structured data.
+const SYSTEM = `You turn one short sentence a person typed into ZarooriBox (a personal reminder app, popular in India) into structured data.
 
 Decide the kind:
 - "lending" when money or a thing was lent to or borrowed from a person ("I lent Rahul ₹2000", "borrowed a drill from Amit", "Neha owes me 500"). Set person, direction, lendingKind, amount (money) or thing (object, capitalised like "Drill machine"). dueDate is the date it happened (today if not said); followUpDate is when to chase it (the date mentioned if it is in the future, otherwise 7 days after dueDate). categoryId "people".

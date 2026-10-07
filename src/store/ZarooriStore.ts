@@ -269,7 +269,7 @@ export class ZarooriStore {
       throw new Error('You’ve reached the recurring item limit on the Free plan.');
     }
     if (input.newFiles?.length && !can(plan, 'attachments')) {
-      throw new Error('Attachments are part of Zaroori Pro.');
+      throw new Error('Attachments are part of ZarooriBox Pro.');
     }
   }
 
@@ -792,7 +792,7 @@ export class ZarooriStore {
   // ---------- Family ----------
 
   private familyService() {
-    if (!this.repo.family) throw new Error('Family sharing needs a Zaroori cloud account.');
+    if (!this.repo.family) throw new Error('Family sharing needs a ZarooriBox cloud account.');
     return this.repo.family;
   }
 

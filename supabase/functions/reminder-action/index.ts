@@ -1,4 +1,4 @@
-// The Done / Tomorrow / Next week links in reminder emails open Zaroori's /act page,
+// The Done / Tomorrow / Next week links in reminder emails open ZarooriBox's /act page,
 // which calls this function with the link's signed token. No sign-in is needed: the
 // token itself proves which person and item it is for (see _shared/actionToken.ts).
 //
@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
 
   const body = await req.json().catch(() => ({}));
   const claims = typeof body?.token === 'string' ? await verifyAction(secret, body.token) : null;
-  if (!claims) return json({ error: 'This link has expired. Open Zaroori to update the item.' }, 401);
+  if (!claims) return json({ error: 'This link has expired. Open ZarooriBox to update the item.' }, 401);
   const action = body.action === undefined ? null : ACTIONS.includes(body.action) ? (body.action as Action) : undefined;
   if (action === undefined) return json({ error: 'Unknown action' }, 400);
 

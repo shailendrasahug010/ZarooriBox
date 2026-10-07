@@ -10,7 +10,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * "Share to Zaroori": Android hands shared text or photos over as ACTION_SEND.
+ * "Share to ZarooriBox": Android hands shared text or photos over as ACTION_SEND.
  * They are turned into an app.zaroori://share link before Capacitor sees the intent,
  * so the web app's /app/share page handles them like any other deep link.
  */

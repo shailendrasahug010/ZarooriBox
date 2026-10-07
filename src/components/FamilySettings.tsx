@@ -81,7 +81,7 @@ export function FamilySettings() {
   const shareInvite = async () => {
     try {
       if (navigator.share) {
-        await navigator.share({ title: 'Zaroori', text: inviteText });
+        await navigator.share({ title: 'ZarooriBox', text: inviteText });
         return;
       }
     } catch {

@@ -143,10 +143,10 @@ export function planForUser(
   for (const channel of channels) {
     if (s.notifications.dailyDigest !== false) {
       const lines = items.map((i) => i.line);
-      const subject = items.length === 1 ? `Zaroori: ${items[0].subject}` : `Zaroori: ${items.length} things need you today`;
-      messages.push({ channel, subject, lines, targets: items.map((i) => i.target), text: `Good morning! From Zaroori:\n${lines.map((l) => `• ${l}`).join('\n')}` });
+      const subject = items.length === 1 ? `ZarooriBox: ${items[0].subject}` : `ZarooriBox: ${items.length} things need you today`;
+      messages.push({ channel, subject, lines, targets: items.map((i) => i.target), text: `Good morning! From ZarooriBox:\n${lines.map((l) => `• ${l}`).join('\n')}` });
     } else {
-      for (const i of items) messages.push({ channel, subject: `Zaroori: ${i.subject}`, lines: [i.line], targets: [i.target], text: `Zaroori reminder: ${i.line}` });
+      for (const i of items) messages.push({ channel, subject: `ZarooriBox: ${i.subject}`, lines: [i.line], targets: [i.target], text: `ZarooriBox reminder: ${i.line}` });
     }
   }
   return {

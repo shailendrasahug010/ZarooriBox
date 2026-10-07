@@ -43,7 +43,7 @@ await step('Protected route redirects to login when signed out', async () => {
 
 await step('Landing page renders hero and CTAs', async () => {
   await page.goto(BASE);
-  await page.getByText('Let Zaroori remember it for you.').waitFor();
+  await page.getByText('Let ZarooriBox remember it for you.').waitFor();
   await page.getByRole('link', { name: 'See How It Works' }).waitFor();
 });
 
@@ -65,7 +65,7 @@ await step('Sign up creates account and shows empty states', async () => {
   await page.getByRole('button', { name: 'Create account' }).click();
   // A brand-new account starts with the short setup; skipping it lands on the dashboard.
   await page.waitForURL('**/app/welcome');
-  await page.getByText('Welcome to Zaroori, Meera!').waitFor();
+  await page.getByText('Welcome to ZarooriBox, Meera!').waitFor();
   await page.getByRole('button', { name: 'Skip' }).click();
   await page.waitForURL(/\/app$/);
   await page.getByText('Good', { exact: false }).first().waitFor();
@@ -281,14 +281,14 @@ await step('A second user sees none of the first user’s data', async () => {
 await step('First-run setup: three steps, first item added, then the dashboard', async () => {
   await page.goto(`${BASE}/app`);
   await page.waitForURL('**/app/welcome');
-  await page.getByText('Welcome to Zaroori, Kabir!').waitFor();
+  await page.getByText('Welcome to ZarooriBox, Kabir!').waitFor();
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByText('Add your first one').waitFor();
   await page.fill('#quick-add-input', 'Pay rent on the 5th every month');
   await page.press('#quick-add-input', 'Enter');
   await page.getByText(/Remembered/).first().waitFor();
-  await page.getByRole('button', { name: 'Go to my Zaroori' }).click();
+  await page.getByRole('button', { name: 'Go to my ZarooriBox' }).click();
   await page.waitForURL(/\/app$/);
   await page.reload();
   await page.waitForTimeout(300);
@@ -309,12 +309,12 @@ await step('Language: switching to Hindi changes the screens, and back', async (
 
 await step('Family sharing explains it needs a cloud account in the offline build', async () => {
   await page.goto(`${BASE}/app/settings`);
-  await page.getByText('Family sharing works with a Zaroori cloud account').waitFor();
+  await page.getByText('Family sharing works with a ZarooriBox cloud account').waitFor();
 });
 
-await step('Share to Zaroori puts the shared text into Quick Add', async () => {
+await step('Share to ZarooriBox puts the shared text into Quick Add', async () => {
   await page.goto(`${BASE}/app/share?title=${encodeURIComponent('Gas cylinder')}&text=${encodeURIComponent('Gas cylinder booking on 20 October')}`);
-  await page.getByText('Add to Zaroori').first().waitFor();
+  await page.getByText('Add to ZarooriBox').first().waitFor();
   expect((await page.inputValue('#quick-add-input')) === 'Gas cylinder booking on 20 October', 'shared text prefilled');
   await page.press('#quick-add-input', 'Enter');
   await page.waitForURL(/\/app$/);

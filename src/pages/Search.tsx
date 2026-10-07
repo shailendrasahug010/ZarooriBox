@@ -52,7 +52,7 @@ export default function Search() {
       <PageHeader title={t('search.title')} />
       <div role="search" className="relative mb-5">
         <label htmlFor="search-input" className="sr-only">
-          Search everything in Zaroori
+          Search everything in ZarooriBox
         </label>
         <SearchIcon className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted" aria-hidden="true" />
         <input

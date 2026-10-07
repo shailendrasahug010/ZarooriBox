@@ -4,7 +4,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // After `npm run build`, run `npx cap sync` to copy it into android/ and ios/.
 const config: CapacitorConfig = {
   appId: 'app.zaroori',
-  appName: 'Zaroori',
+  appName: 'ZarooriBox',
   webDir: 'dist',
   android: { allowMixedContent: false },
   plugins: {

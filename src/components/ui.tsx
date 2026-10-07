@@ -10,14 +10,14 @@ export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(' ');
 }
 
-/** The Zaroori mark (a checklist calendar with a reminder bell) and name. */
+/** The ZarooriBox mark (an open box full of reminders) and name. */
 export function Logo({ className = '', withText = true, light = false }: { className?: string; withText?: boolean; light?: boolean }) {
   return (
     <span className={cx('inline-flex items-center gap-2', className)}>
       <img src="/logo-mark.png" alt="" width={36} height={36} className="size-9 shrink-0 object-contain" draggable={false} />
       {withText && (
         <span className={cx('text-[1.2rem] font-extrabold tracking-tight', light ? 'text-white' : 'text-ink')}>
-          <span className={light ? 'text-sky-200' : 'bg-gradient-to-br from-blue-600 via-sky-500 to-emerald-500 bg-clip-text text-transparent'}>Z</span>aroori
+          Zaroori<span className={light ? 'text-sky-200' : 'text-brand-600'}>Box</span>
         </span>
       )}
     </span>
