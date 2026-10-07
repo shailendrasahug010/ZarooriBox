@@ -113,7 +113,7 @@ export default function Dashboard() {
       </header>
 
       <div className="animate-fade-up" style={{ animationDelay: '60ms' }}>
-        <QuickAdd autoFocus={params.get('add') === '1'} autoVoice={params.get('voice') === '1'} bigMic />
+        <QuickAdd autoFocus={params.get('add') === '1'} autoVoice={params.get('voice') === '1'} />
       </div>
       {showHint && (
         <p className="flex items-center justify-between gap-3 rounded-2xl bg-brand-50 px-4 py-2.5 text-sm text-brand-800 lg:hidden">
