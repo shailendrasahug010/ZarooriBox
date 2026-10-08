@@ -121,7 +121,7 @@ export const isNativeApp = () => Capacitor.isNativePlatform();
 export const ALERT_CHANNEL = 'zaroori-alerts';
 let channelReady: Promise<void> | null = null;
 
-function ensureAlertChannel(): Promise<void> {
+export function ensureAlertChannel(): Promise<void> {
   if (Capacitor.getPlatform() !== 'android') return Promise.resolve();
   channelReady ??= LocalNotifications.createChannel({
     id: ALERT_CHANNEL,
@@ -173,13 +173,6 @@ export async function scheduleTestNotification(seconds = 5) {
       },
     ],
   });
-}
-
-/** Android 12+: whether "Alarms & reminders" is allowed, so alerts fire at the exact minute. */
-export async function exactAlarmsAllowed(): Promise<boolean | null> {
-  if (Capacitor.getPlatform() !== 'android') return null;
-  const r = await LocalNotifications.checkExactNotificationSetting().catch(() => null);
-  return r ? r.exact_alarm === 'granted' : null;
 }
 
 /** Reads the real permission state once at startup (the plugin call is async). */

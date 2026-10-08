@@ -111,9 +111,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
     sync();
     const unsubscribe = store.subscribe(sync);
+    // Opening the app tops up the week of medicine alerts and re-arms anything the
+    // phone dropped (an app update, a battery saver clearing alarms).
+    const onVisible = () => document.visibilityState === 'visible' && sync();
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       window.clearTimeout(t);
       unsubscribe();
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [store]);
 

@@ -7,8 +7,8 @@ import { useToast } from '../components/Toast';
 import { Field, PageHeader, Segmented, Switch, cx } from '../components/ui';
 import { readAppearance, saveAppearance, type Appearance, type TextSize, type Theme } from '../lib/appearance';
 import { CHANNELS, deviceChannel, sendServerTest, type ChannelStatus } from '../lib/notifications/channels';
-import { exactAlarmsAllowed, isNativeApp, refreshNativeStatus, scheduleTestNotification } from '../lib/notifications/native';
-import { openExactAlarmSetting } from '../lib/notifications/startup';
+import { isNativeApp, refreshNativeStatus, scheduleTestNotification } from '../lib/notifications/native';
+import { PopupCheck } from '../components/PopupCheck';
 import { normalizePhone } from '../lib/format';
 import { EARLY_ACCESS, PLANS } from '../lib/plans';
 import { useData, useStore } from '../store/DataProvider';
@@ -162,15 +162,9 @@ export default function Settings() {
     await setPref({ [key]: on });
   };
 
-  const [exactAlarms, setExactAlarms] = useState<boolean | null>(null);
   useEffect(() => {
     if (!isNativeApp()) return;
     void refreshNativeStatus().then(setBrowserStatus);
-    const check = () => void exactAlarmsAllowed().then(setExactAlarms);
-    check();
-    // Coming back from Android's settings screen.
-    document.addEventListener('visibilitychange', check);
-    return () => document.removeEventListener('visibilitychange', check);
   }, []);
 
   useEffect(() => {
@@ -396,14 +390,19 @@ export default function Settings() {
             Send a test notification
           </button>
         )}
-        {exactAlarms === false && (
-          <div className="mt-3 rounded-xl bg-soon-bg p-3 text-sm text-soon">
-            <p>Turn on “Alarms &amp; reminders” for ZarooriBox so alerts arrive at the exact time.</p>
-            <button type="button" className="btn btn-secondary btn-sm mt-2" onClick={() => void openExactAlarmSetting()}>
-              Open setting
-            </button>
-          </div>
+        {isNativeApp() && settings.notifications.browser && browserStatus === 'ready' && (
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm mt-2 ml-2"
+            onClick={async () => {
+              await scheduleTestNotification(60);
+              toast.success('Lock your phone now. A test alert should pop up in 1 minute.');
+            }}
+          >
+            Test with the screen locked
+          </button>
         )}
+        {settings.notifications.browser && browserStatus === 'ready' && <PopupCheck />}
         <div className="mt-5 grid gap-4 border-t border-line pt-5 sm:grid-cols-2">
           <div className="flex items-center gap-4 sm:col-span-2">
             <div className="flex-1">
