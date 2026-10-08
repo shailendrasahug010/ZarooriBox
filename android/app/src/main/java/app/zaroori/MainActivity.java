@@ -23,6 +23,7 @@ public class MainActivity extends BridgeActivity {
         Intent converted = fromShare(getIntent());
         if (converted != null) setIntent(converted);
         registerPlugin(WidgetPlugin.class);
+        registerPlugin(DevicePlugin.class);
         super.onCreate(savedInstanceState);
     }
 
